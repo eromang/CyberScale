@@ -30,6 +30,7 @@ services:
       ALLOWED_HOSTS: "*"
       MISP_URL: "https://misp"
       MISP_API_KEY: "changeme-run-misp-authkey-setup"
+      MISP_SSL_VERIFY: "false"
     volumes:
       - .:/app
       - model_cache:/app/data/models

@@ -60,6 +60,8 @@ def build_misp_event(assessment, entity, profile_event_uuid: str = "") -> dict:
     obj_dict = {
         "name": "cyberscale-entity-assessment",
         "meta-category": "misc",
+        "template_uuid": "c5e0f001-e27a-4f00-a000-000000000002",
+        "template_version": "1",
         "uuid": str(uuid.uuid4()),
         "Attribute": attributes,
     }
@@ -136,6 +138,8 @@ def build_misp_event_for_type(assessment, entity, type_result: dict, profile_eve
     obj_dict = {
         "name": "cyberscale-entity-assessment",
         "meta-category": "misc",
+        "template_uuid": "c5e0f001-e27a-4f00-a000-000000000002",
+        "template_version": "1",
         "uuid": str(uuid.uuid4()),
         "Attribute": attributes,
     }
@@ -219,6 +223,8 @@ def build_misp_event_global(assessment, entity, profile_event_uuid: str = "") ->
         obj_dict = {
             "name": "cyberscale-entity-assessment",
             "meta-category": "misc",
+            "template_uuid": "c5e0f001-e27a-4f00-a000-000000000002",
+            "template_version": "1",
             "uuid": str(uuid.uuid4()),
             "Attribute": attrs,
         }

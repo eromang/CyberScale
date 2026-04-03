@@ -31,9 +31,7 @@ def push_event(misp_url: str, misp_api_key: str, event_dict: dict, ssl: bool = T
         return {"success": False, "event_id": None, "event_uuid": None, "error": str(exc)}
 
     try:
-        event_data = event_dict.get("Event", event_dict)
-        misp_event = _dict_to_misp_event(event_data)
-        response = misp.add_event(misp_event)
+        response = misp.direct_call("events/add", event_dict)
 
         if isinstance(response, dict) and "errors" in response:
             error_msg = str(response["errors"])
@@ -73,7 +71,8 @@ def _dict_to_misp_event(event_data: dict) -> MISPEvent:
         event.add_tag(tag["name"])
 
     for obj_data in event_data.get("Object", []):
-        misp_obj = MISPObject(obj_data.get("name", "cyberscale-entity-assessment"), standalone=True)
+        obj_name = obj_data.get("name", "cyberscale-entity-assessment")
+        misp_obj = MISPObject(obj_name, standalone=True)
         if obj_data.get("uuid"):
             misp_obj.uuid = obj_data["uuid"]
 

@@ -14,13 +14,9 @@ class MISPPushModuleTest(TestCase):
     def test_push_event_success(self):
         from entity.misp_push import push_event
 
-        mock_event = MagicMock()
-        mock_event.id = 42
-        mock_event.uuid = "abc-123"
-
         with patch("entity.misp_push.PyMISP") as MockPyMISP:
             instance = MockPyMISP.return_value
-            instance.add_event.return_value = mock_event
+            instance.direct_call.return_value = {"Event": {"id": "42", "uuid": "abc-123"}}
 
             result = push_event(
                 "https://misp.example.org", "test-api-key",
@@ -46,7 +42,7 @@ class MISPPushModuleTest(TestCase):
 
         with patch("entity.misp_push.PyMISP") as MockPyMISP:
             instance = MockPyMISP.return_value
-            instance.add_event.return_value = {"errors": ["403 Forbidden"]}
+            instance.direct_call.return_value = {"errors": ["403 Forbidden"]}
 
             result = push_event(
                 "https://misp.example.org", "key",
@@ -61,7 +57,7 @@ class MISPPushModuleTest(TestCase):
 
         with patch("entity.misp_push.PyMISP") as MockPyMISP:
             instance = MockPyMISP.return_value
-            instance.add_event.side_effect = Exception("Timeout")
+            instance.direct_call.side_effect = Exception("Timeout")
 
             result = push_event(
                 "https://misp.example.org", "key",

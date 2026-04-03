@@ -1,8 +1,11 @@
 import csv
+import os
 import uuid as uuid_mod
 
 from django.contrib import admin, messages
 from django.http import HttpResponse
+
+MISP_SSL_VERIFY = os.environ.get("MISP_SSL_VERIFY", "").lower() not in ("0", "false", "no", "")
 
 from .models import Assessment, Entity, EntityType, Submission
 
@@ -46,7 +49,7 @@ def push_profile_to_misp(modeladmin, request, queryset):
 
         event_dict = build_misp_profile_event(entity)
 
-        result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict)
+        result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict, ssl=MISP_SSL_VERIFY)
 
         if result["success"]:
             latest = entity.assessments.order_by("-created_at").first()
@@ -157,7 +160,7 @@ def push_to_misp(modeladmin, request, queryset):
         else:
             event_dict = build_misp_event(assessment, entity, profile_event_uuid=profile_uuid)
 
-        result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict)
+        result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict, ssl=MISP_SSL_VERIFY)
 
         if result["success"]:
             Submission.objects.create(

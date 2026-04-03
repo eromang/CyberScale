@@ -50,6 +50,8 @@ def build_misp_profile_event(entity) -> dict:
                 {
                     "name": "cyberscale-entity-profile",
                     "meta-category": "misc",
+                    "template_uuid": "c5e0f001-e27a-4f00-a000-000000000001",
+                    "template_version": "1",
                     "uuid": str(uuid.uuid4()),
                     "Attribute": attributes,
                 }
