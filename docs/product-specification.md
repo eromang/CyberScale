@@ -341,7 +341,7 @@ Each entity assessment produces one MISP event containing:
 | **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + save draft + Django admin + Docker playground |
 | **v1.1** | Notification form generation (Art. 23 structured output) |
 | **v1.2** | MISP bidirectional sync (authority feedback → entity) |
-| **v1.3** | Art. 27 entity registration — extended profile (address, contact, IP ranges, responsible person), multi-MS service provision, ENISA registration data export |
+| **v1.3** | Art. 27 entity registration — extended profile (address, contact, IP ranges, responsible person), multi-MS service provision, ENISA registration data export, entity profile as MISP object (`cyberscale-entity-profile`) for authority push/import |
 | **v1.4** | Additional national modules (as regulatory data becomes available) |
 | **v2.0** | Temporal incident tracking (early warning → notification → final) |
 | **v2.1** | CSIRT dashboard (active incidents, sector aggregation) |
