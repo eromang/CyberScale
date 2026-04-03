@@ -9,6 +9,14 @@ src/cyberscale/          Core library (inference, tools, national modules)
 data/reference/           Reference JSON (ships with package)
 evaluation/               Benchmarks and validation scripts
 docs/                     Design specification, roadmap, lessons learned
+
+cyberscale_web/           Django project (settings, urls, wsgi)
+entity/                   Django app (models, views, forms, assessment engine)
+templates/                Django templates (base, entity workflow)
+static/css/               Custom CSS (institutional theme on Pico CSS)
+manage.py                 Django management command
+Dockerfile                Python 3.11-slim + weasyprint deps
+docker-compose.yml        PostgreSQL 16 + Django dev server
 ```
 
 Training code is in a separate repo: `github.com/eromang/CyberScale-Training`
@@ -47,6 +55,15 @@ poetry run cyberscale
 Claude manages Docker fully — build, up, down, exec, logs, troubleshooting. The user does not run Docker commands.
 
 See `docs/docker-playground.md` for architecture and `docs/product-specification.md` for full product spec.
+
+## Web playground conventions
+
+- Django project: `cyberscale_web/` — settings, urls, wsgi
+- Entity app: `entity/` — models, views, forms, admin, assessment engine, MISP export
+- Templates: `templates/` — Pico CSS + HTMX, institutional theme via `static/css/cyberscale.css`
+- Assessment engine wrapper: `entity/assessment.py` — three-tier routing (IR → national → ML/heuristic)
+- Enums/choices in forms loaded from `data/reference/nis2_entity_types.json` — not hardcoded
+- HTMX endpoint for sector → entity type filtering: `/htmx/entity-types/`
 
 ## Conventions
 

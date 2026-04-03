@@ -62,100 +62,14 @@ docker compose up
 
 ## Docker Compose Configuration
 
-### `docker-compose.yml`
+The actual configuration files are at the repo root — see `docker-compose.yml` and `Dockerfile` directly. The MCP server service (`cyberscale-mcp`) is not yet wired into compose; it will be added when MCP integration is implemented.
 
-```yaml
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: cyberscale
-      POSTGRES_USER: cyberscale
-      POSTGRES_PASSWORD: cyberscale_dev
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cyberscale"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  cyberscale-web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
-    environment:
-      DATABASE_URL: postgres://cyberscale:cyberscale_dev@postgres:5432/cyberscale
-      SECRET_KEY: dev-secret-key-change-in-production
-      DEBUG: "true"
-      ALLOWED_HOSTS: "*"
-      # Optional MISP configuration
-      MISP_URL: https://misp:8443
-      MISP_API_KEY: ${MISP_API_KEY:-}
-      MISP_VERIFY_SSL: "false"
-    volumes:
-      - .:/app
-      - model_cache:/app/data/models
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  cyberscale-mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: python -m cyberscale.server
-    environment:
-      CYBERSCALE_MODEL_PATH: /app/data/models
-    volumes:
-      - .:/app
-      - model_cache:/app/data/models
-    ports:
-      - "8001:8001"
-
-volumes:
-  postgres_data:
-  model_cache:
-```
-
-### `Dockerfile`
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# System dependencies for weasyprint PDF generation
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
-    libffi-dev \
-    shared-mime-info \
-    && rm -rf /var/lib/apt/lists/*
-
-# Python dependencies
-COPY pyproject.toml poetry.lock* ./
-RUN pip install poetry && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-root
-
-# Application code
-COPY . .
-RUN pip install -e .
-
-EXPOSE 8000
-
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-```
+Key details:
+- **PostgreSQL 16-alpine** with healthcheck, data persisted in `postgres_data` volume
+- **cyberscale-web** runs migrations + collectstatic + runserver on startup
+- **WeasyPrint** system deps (Pango, GdkPixbuf) installed in Dockerfile
+- **Source mounted** as `/app` for live reload during development
+- **Model cache** volume at `/app/data/models` (ML models not included in image)
 
 ---
 
