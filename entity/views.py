@@ -387,53 +387,6 @@ def assessment_misp_json_view(request, pk):
     return response
 
 
-@login_required
-@require_POST
-def assessment_misp_push_view(request, pk):
-    entity = _get_entity_or_redirect(request)
-    if entity is None:
-        return redirect("register")
-    assessment = get_object_or_404(Assessment, pk=pk, entity=entity, status="completed")
-
-    if not entity.misp_instance_url or not entity.misp_api_key:
-        messages.error(request, "MISP instance URL and API key must be configured before pushing.")
-        return redirect("assessment_result", pk=pk)
-
-    from .misp_export import build_misp_event_global, build_misp_event
-    from .misp_push import push_event
-    import uuid as uuid_mod
-
-    # Ensure UUID exists
-    if not assessment.misp_event_uuid:
-        assessment.misp_event_uuid = str(uuid_mod.uuid4())
-        assessment.save(update_fields=["misp_event_uuid"])
-
-    if assessment.assessment_results:
-        event_dict = build_misp_event_global(assessment, entity)
-    else:
-        event_dict = build_misp_event(assessment, entity)
-
-    result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict)
-
-    if result["success"]:
-        Submission.objects.create(
-            assessment=assessment,
-            target="misp_push",
-            misp_event_id=result["event_id"] or "",
-            status="success",
-        )
-        messages.success(request, f"Event pushed to MISP (ID: {result['event_id']}).")
-    else:
-        Submission.objects.create(
-            assessment=assessment,
-            target="misp_push",
-            status="failed",
-        )
-        messages.error(request, f"MISP push failed: {result['error']}")
-
-    return redirect("assessment_result", pk=pk)
-
-
 def entity_types_for_sector(request):
     """HTMX endpoint: return <option> tags for entity types filtered by sector."""
     sector = request.GET.get("sector", "")

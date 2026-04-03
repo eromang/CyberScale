@@ -1,6 +1,7 @@
 import csv
+import uuid as uuid_mod
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.http import HttpResponse
 
 from .models import Assessment, Entity, EntityType, Submission
@@ -29,6 +30,48 @@ class AssessmentInline(admin.TabularInline):
         return False
 
 
+def push_profile_to_misp(modeladmin, request, queryset):
+    """Push selected entity profiles to MISP."""
+    from .misp_profile_export import build_misp_profile_event
+    from .misp_push import push_event
+
+    for entity in queryset:
+        if not entity.misp_instance_url or not entity.misp_api_key:
+            messages.error(request, f"{entity.organisation_name}: MISP URL and API key required.")
+            continue
+
+        if not entity.misp_profile_event_uuid:
+            entity.misp_profile_event_uuid = str(uuid_mod.uuid4())
+            entity.save(update_fields=["misp_profile_event_uuid"])
+
+        event_dict = build_misp_profile_event(entity)
+
+        result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict)
+
+        if result["success"]:
+            latest = entity.assessments.order_by("-created_at").first()
+            if latest:
+                Submission.objects.create(
+                    assessment=latest,
+                    target="misp_profile_push",
+                    misp_event_id=result["event_id"] or "",
+                    status="success",
+                )
+            messages.success(request, f"{entity.organisation_name}: Profile pushed (ID: {result['event_id']}).")
+        else:
+            latest = entity.assessments.order_by("-created_at").first()
+            if latest:
+                Submission.objects.create(
+                    assessment=latest,
+                    target="misp_profile_push",
+                    status="failed",
+                )
+            messages.error(request, f"{entity.organisation_name}: Push failed — {result['error']}")
+
+
+push_profile_to_misp.short_description = "Push profile to MISP"
+
+
 @admin.register(EntityType)
 class EntityTypeAdmin(admin.ModelAdmin):
     list_display = ("entity", "sector", "entity_type", "added_at")
@@ -38,10 +81,21 @@ class EntityTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Entity)
 class EntityAdmin(admin.ModelAdmin):
-    list_display = ("organisation_name", "ms_established", "competent_authority")
+    list_display = ("organisation_name", "ms_established", "contact_email", "responsible_person_name", "competent_authority")
     list_filter = ("ms_established",)
     search_fields = ("organisation_name", "user__username")
+    readonly_fields = ("misp_profile_event_uuid",)
     inlines = [EntityTypeInline, AssessmentInline]
+    actions = [push_profile_to_misp]
+    fieldsets = (
+        ("Organisation", {"fields": ("user", "organisation_name", "address", "ms_established", "competent_authority")}),
+        ("General Contact", {"fields": ("contact_email", "contact_phone")}),
+        ("Responsible Person", {"fields": ("responsible_person_name", "responsible_person_email")}),
+        ("Technical Contact", {"fields": ("technical_contact_name", "technical_contact_email", "technical_contact_phone")}),
+        ("Service Provision", {"fields": ("ms_services",)}),
+        ("IP Ranges", {"fields": ("ip_ranges",)}),
+        ("MISP Settings", {"fields": ("misp_instance_url", "misp_api_key", "misp_default_tlp", "misp_profile_event_uuid")}),
+    )
 
 
 def export_assessments_csv(modeladmin, request, queryset):
@@ -68,7 +122,61 @@ def export_assessments_csv(modeladmin, request, queryset):
         ])
     return response
 
+
 export_assessments_csv.short_description = "Export selected as CSV"
+
+
+def push_to_misp(modeladmin, request, queryset):
+    """Push selected assessments to MISP (admin action)."""
+    from .misp_export import build_misp_event_global, build_misp_event
+    from .misp_push import push_event
+
+    for assessment in queryset.select_related("entity"):
+        entity = assessment.entity
+
+        if assessment.status != "completed":
+            messages.error(request, f"Assessment #{assessment.pk}: Only completed assessments can be pushed.")
+            continue
+
+        if not entity.misp_instance_url or not entity.misp_api_key:
+            messages.error(request, f"Assessment #{assessment.pk}: Entity MISP URL and API key required.")
+            continue
+
+        if not entity.misp_profile_event_uuid:
+            messages.error(request, f"Assessment #{assessment.pk}: Entity profile must be pushed to MISP before pushing assessments.")
+            continue
+
+        if not assessment.misp_event_uuid:
+            assessment.misp_event_uuid = str(uuid_mod.uuid4())
+            assessment.save(update_fields=["misp_event_uuid"])
+
+        profile_uuid = entity.misp_profile_event_uuid
+
+        if assessment.assessment_results:
+            event_dict = build_misp_event_global(assessment, entity, profile_event_uuid=profile_uuid)
+        else:
+            event_dict = build_misp_event(assessment, entity, profile_event_uuid=profile_uuid)
+
+        result = push_event(entity.misp_instance_url, entity.misp_api_key, event_dict)
+
+        if result["success"]:
+            Submission.objects.create(
+                assessment=assessment,
+                target="misp_push",
+                misp_event_id=result["event_id"] or "",
+                status="success",
+            )
+            messages.success(request, f"Assessment #{assessment.pk}: Pushed (ID: {result['event_id']}).")
+        else:
+            Submission.objects.create(
+                assessment=assessment,
+                target="misp_push",
+                status="failed",
+            )
+            messages.error(request, f"Assessment #{assessment.pk}: Push failed — {result['error']}")
+
+
+push_to_misp.short_description = "Push to MISP"
 
 
 @admin.register(Assessment)
@@ -83,9 +191,9 @@ class AssessmentAdmin(admin.ModelAdmin):
     readonly_fields = (
         "result_significance", "result_significance_label", "result_model",
         "result_criteria", "result_framework", "result_competent_authority",
-        "result_early_warning", "result_raw",
+        "result_early_warning", "result_raw", "misp_event_uuid",
     )
-    actions = [export_assessments_csv]
+    actions = [export_assessments_csv, push_to_misp]
 
 
 @admin.register(Submission)

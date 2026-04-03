@@ -100,109 +100,119 @@ class MISPPushModuleTest(TestCase):
         assert len(misp_event.Object[0].Attribute) == 1
 
 
-class MISPPushViewTest(TestCase):
-    """Tests for the MISP push view endpoint."""
+class AdminProfilePushTest(TestCase):
+    """Tests for admin 'Push profile to MISP' action."""
 
     def setUp(self):
-        self.user = User.objects.create_user("testuser", password="testpass123")
+        self.superuser = User.objects.create_superuser("admin", "admin@test.com", "adminpass123")
         self.entity = Entity.objects.create(
-            user=self.user,
-            organisation_name="Test Corp",
+            user=User.objects.create_user("pushentity", password="testpass123"),
+            organisation_name="Push Corp",
             sector="energy",
             entity_type="electricity_undertaking",
             ms_established="LU",
             misp_instance_url="https://misp.example.org",
-            misp_api_key="test-api-key",
+            misp_api_key="test-key",
+            address="1 Rue Test",
+            contact_email="info@pushcorp.lu",
         )
         EntityType.objects.create(
             entity=self.entity, sector="energy", entity_type="electricity_undertaking",
         )
         self.assessment = Assessment.objects.create(
-            entity=self.entity,
-            status="completed",
-            description="Test incident",
-            sector="energy",
+            entity=self.entity, status="completed",
+            description="Profile push test", sector="energy",
             entity_type="electricity_undertaking",
-            result_significance=True,
             result_significance_label="SIGNIFICANT",
-            result_model="ir_thresholds",
-            result_early_warning={"recommended": True, "deadline": "24h"},
-            assessment_results=[{
-                "sector": "energy",
-                "entity_type": "electricity_undertaking",
-                "significance_label": "SIGNIFICANT",
-                "model": "ir_thresholds",
-                "early_warning": {"recommended": True, "deadline": "24h"},
-                "triggered_criteria": ["service_impact >= degraded"],
-            }],
         )
-        self.client.login(username="testuser", password="testpass123")
+        self.client = Client()
+        self.client.login(username="admin", password="adminpass123")
 
-    def test_push_requires_post(self):
-        resp = self.client.get(f"/assess/{self.assessment.pk}/misp-push/")
-        assert resp.status_code == 405
-
-    def test_push_requires_login(self):
-        c = Client()
-        resp = c.post(f"/assess/{self.assessment.pk}/misp-push/")
-        assert resp.status_code == 302
-        assert "/login/" in resp.url
-
-    def test_push_success(self):
-        mock_event = MagicMock()
-        mock_event.id = 99
-        mock_event.uuid = "pushed-uuid"
-
+    def test_push_profile_success(self):
         with patch("entity.misp_push.push_event") as mock_push:
             mock_push.return_value = {
-                "success": True, "event_id": "99",
-                "event_uuid": "pushed-uuid", "error": None,
+                "success": True, "event_id": "10",
+                "event_uuid": "profile-uuid-returned", "error": None,
             }
-            resp = self.client.post(f"/assess/{self.assessment.pk}/misp-push/")
+            resp = self.client.post("/admin/entity/entity/", {
+                "action": "push_profile_to_misp",
+                "_selected_action": [str(self.entity.pk)],
+            })
+
+        assert resp.status_code == 302
+        self.entity.refresh_from_db()
+        assert self.entity.misp_profile_event_uuid != ""
+        sub = Submission.objects.filter(target="misp_profile_push", status="success").first()
+        assert sub is not None
+
+    def test_push_profile_no_misp_config(self):
+        self.entity.misp_instance_url = ""
+        self.entity.save()
+
+        resp = self.client.post("/admin/entity/entity/", {
+            "action": "push_profile_to_misp",
+            "_selected_action": [str(self.entity.pk)],
+        })
+        assert resp.status_code == 302
+        assert not Submission.objects.filter(target="misp_profile_push").exists()
+
+
+class AdminAssessmentPushTest(TestCase):
+    """Tests for admin 'Push to MISP' action."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser("admin2", "admin2@test.com", "adminpass123")
+        self.entity = Entity.objects.create(
+            user=User.objects.create_user("assesspush", password="testpass123"),
+            organisation_name="Assess Corp",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            misp_instance_url="https://misp.example.org",
+            misp_api_key="test-key",
+            misp_profile_event_uuid="existing-profile-uuid",
+        )
+        self.assessment = Assessment.objects.create(
+            entity=self.entity, status="completed",
+            description="Test incident", sector="energy",
+            entity_type="electricity_undertaking",
+            result_significance_label="SIGNIFICANT",
+            assessment_results=[{
+                "sector": "energy", "entity_type": "electricity_undertaking",
+                "significance_label": "SIGNIFICANT", "model": "ir_thresholds",
+                "early_warning": {"recommended": False},
+                "triggered_criteria": [],
+            }],
+        )
+        self.client = Client()
+        self.client.login(username="admin2", password="adminpass123")
+
+    def test_push_assessment_success(self):
+        with patch("entity.misp_push.push_event") as mock_push:
+            mock_push.return_value = {
+                "success": True, "event_id": "20",
+                "event_uuid": "assess-uuid", "error": None,
+            }
+            resp = self.client.post("/admin/entity/assessment/", {
+                "action": "push_to_misp",
+                "_selected_action": [str(self.assessment.pk)],
+            })
 
         assert resp.status_code == 302
         sub = Submission.objects.filter(target="misp_push", status="success").first()
         assert sub is not None
-        assert sub.misp_event_id == "99"
+        assert sub.misp_event_id == "20"
 
-    def test_push_failure_records_submission(self):
-        with patch("entity.misp_push.push_event") as mock_push:
-            mock_push.return_value = {
-                "success": False, "event_id": None,
-                "event_uuid": None, "error": "Connection refused",
-            }
-            resp = self.client.post(f"/assess/{self.assessment.pk}/misp-push/")
-
-        assert resp.status_code == 302
-        sub = Submission.objects.filter(target="misp_push", status="failed").first()
-        assert sub is not None
-
-    def test_push_without_misp_config(self):
-        self.entity.misp_instance_url = ""
-        self.entity.misp_api_key = ""
+    def test_push_assessment_blocked_without_profile(self):
+        self.entity.misp_profile_event_uuid = ""
         self.entity.save()
 
-        resp = self.client.post(f"/assess/{self.assessment.pk}/misp-push/")
+        resp = self.client.post("/admin/entity/assessment/", {
+            "action": "push_to_misp",
+            "_selected_action": [str(self.assessment.pk)],
+        })
         assert resp.status_code == 302
         assert not Submission.objects.filter(target="misp_push").exists()
-
-    def test_push_draft_returns_404(self):
-        draft = Assessment.objects.create(
-            entity=self.entity, status="draft",
-            description="Draft", sector="energy", entity_type="electricity_undertaking",
-        )
-        resp = self.client.post(f"/assess/{draft.pk}/misp-push/")
-        assert resp.status_code == 404
-
-    def test_push_button_visible_when_configured(self):
-        resp = self.client.get(f"/assess/{self.assessment.pk}/")
-        assert b"Push to MISP" in resp.content
-
-    def test_push_button_hidden_without_config(self):
-        self.entity.misp_instance_url = ""
-        self.entity.save()
-        resp = self.client.get(f"/assess/{self.assessment.pk}/")
-        assert b"Push to MISP" not in resp.content
 
 
 class ObjectReferenceTest(TestCase):
