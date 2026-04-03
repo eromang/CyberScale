@@ -338,10 +338,11 @@ Each entity assessment produces one MISP event containing:
 
 | Version | Scope |
 |---|---|
-| **v1.0** | Entity web form + PDF + MISP export + Django admin + Docker playground |
+| **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + save draft + Django admin + Docker playground |
 | **v1.1** | Notification form generation (Art. 23 structured output) |
 | **v1.2** | MISP bidirectional sync (authority feedback → entity) |
-| **v1.3** | Additional national modules (as regulatory data becomes available) |
+| **v1.3** | Art. 27 entity registration — extended profile (address, contact, IP ranges, responsible person), multi-MS service provision, ENISA registration data export |
+| **v1.4** | Additional national modules (as regulatory data becomes available) |
 | **v2.0** | Temporal incident tracking (early warning → notification → final) |
 | **v2.1** | CSIRT dashboard (active incidents, sector aggregation) |
 | **v2.2** | Exercise support (scenario injection, timed escalation for BlueOLEx/CyberEurope) |
