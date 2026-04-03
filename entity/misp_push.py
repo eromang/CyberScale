@@ -10,13 +10,14 @@ from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
 logger = logging.getLogger("cyberscale.misp_push")
 
 
-def push_event(misp_url: str, misp_api_key: str, event_dict: dict) -> dict:
+def push_event(misp_url: str, misp_api_key: str, event_dict: dict, ssl: bool = True) -> dict:
     """Push a CyberScale MISP event dict to a remote MISP instance.
 
     Args:
         misp_url: Base URL of the MISP instance (e.g. https://misp.example.org).
         misp_api_key: API key for authentication.
         event_dict: Event dict as produced by misp_export builders (has "Event" key).
+        ssl: Whether to verify SSL certificates (False for self-signed).
 
     Returns:
         dict with keys:
@@ -24,7 +25,7 @@ def push_event(misp_url: str, misp_api_key: str, event_dict: dict) -> dict:
             error (str|None)
     """
     try:
-        misp = PyMISP(misp_url, misp_api_key, ssl=True, timeout=30)
+        misp = PyMISP(misp_url, misp_api_key, ssl=ssl, timeout=30)
     except Exception as exc:
         logger.error("Failed to connect to MISP at %s: %s", misp_url, exc)
         return {"success": False, "event_id": None, "event_uuid": None, "error": str(exc)}

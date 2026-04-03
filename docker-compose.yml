@@ -29,7 +29,7 @@ services:
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
       MISP_URL: "https://misp"
-      MISP_API_KEY: "cyberscale-misp-test-api-key"
+      MISP_API_KEY: "changeme-run-misp-authkey-setup"
     volumes:
       - .:/app
       - model_cache:/app/data/models
@@ -56,8 +56,9 @@ services:
 
   misp-redis:
     image: redis:7-alpine
+    command: redis-server --requirepass redispassword
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redispassword", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
