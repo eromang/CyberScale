@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 
-def build_misp_event(assessment, entity) -> dict:
+def build_misp_event(assessment, entity, profile_event_uuid: str = "") -> dict:
     """Build a MISP event dict from an Assessment + Entity.
 
     Follows the cyberscale-entity-assessment object structure
@@ -57,6 +57,19 @@ def build_misp_event(assessment, entity) -> dict:
 
     tlp = entity.misp_default_tlp or "tlp:amber"
 
+    obj_dict = {
+        "name": "cyberscale-entity-assessment",
+        "meta-category": "misc",
+        "uuid": str(uuid.uuid4()),
+        "Attribute": attributes,
+    }
+    if profile_event_uuid:
+        obj_dict["ObjectReference"] = [{
+            "referenced_uuid": profile_event_uuid,
+            "relationship_type": "belongs-to",
+            "comment": "Entity profile for this assessment",
+        }]
+
     return {
         "Event": {
             "info": f"CyberScale entity assessment: {assessment.sector} / {assessment.entity_type}",
@@ -71,19 +84,12 @@ def build_misp_event(assessment, entity) -> dict:
                 {"name": f'nis2:significance="{sig_tag}"'},
                 {"name": tlp},
             ],
-            "Object": [
-                {
-                    "name": "cyberscale-entity-assessment",
-                    "meta-category": "misc",
-                    "uuid": str(uuid.uuid4()),
-                    "Attribute": attributes,
-                }
-            ],
+            "Object": [obj_dict],
         }
     }
 
 
-def build_misp_event_for_type(assessment, entity, type_result: dict) -> dict:
+def build_misp_event_for_type(assessment, entity, type_result: dict, profile_event_uuid: str = "") -> dict:
     """Build a MISP event for a specific entity type result."""
     event_uuid = str(uuid.uuid4())
 
@@ -127,6 +133,19 @@ def build_misp_event_for_type(assessment, entity, type_result: dict) -> dict:
 
     tlp = entity.misp_default_tlp or "tlp:amber"
 
+    obj_dict = {
+        "name": "cyberscale-entity-assessment",
+        "meta-category": "misc",
+        "uuid": str(uuid.uuid4()),
+        "Attribute": attributes,
+    }
+    if profile_event_uuid:
+        obj_dict["ObjectReference"] = [{
+            "referenced_uuid": profile_event_uuid,
+            "relationship_type": "belongs-to",
+            "comment": "Entity profile for this assessment",
+        }]
+
     return {
         "Event": {
             "info": f"CyberScale entity assessment: {type_result.get('sector', '')} / {type_result.get('entity_type', '')}",
@@ -141,19 +160,12 @@ def build_misp_event_for_type(assessment, entity, type_result: dict) -> dict:
                 {"name": f'nis2:significance="{sig_tag}"'},
                 {"name": tlp},
             ],
-            "Object": [
-                {
-                    "name": "cyberscale-entity-assessment",
-                    "meta-category": "misc",
-                    "uuid": str(uuid.uuid4()),
-                    "Attribute": attributes,
-                }
-            ],
+            "Object": [obj_dict],
         }
     }
 
 
-def build_misp_event_global(assessment, entity) -> dict:
+def build_misp_event_global(assessment, entity, profile_event_uuid: str = "") -> dict:
     """Build a single MISP event with one object per affected entity type.
 
     One event = one incident. Multiple objects = multiple affected entity types.
@@ -204,16 +216,23 @@ def build_misp_event_global(assessment, entity) -> dict:
         if criteria_text:
             attrs.append(_attr("triggered-criteria", "text", criteria_text))
 
-        objects.append({
+        obj_dict = {
             "name": "cyberscale-entity-assessment",
             "meta-category": "misc",
             "uuid": str(uuid.uuid4()),
             "Attribute": attrs,
-        })
+        }
+        if profile_event_uuid:
+            obj_dict["ObjectReference"] = [{
+                "referenced_uuid": profile_event_uuid,
+                "relationship_type": "belongs-to",
+                "comment": "Entity profile for this assessment",
+            }]
+        objects.append(obj_dict)
 
     # Fallback: if no assessment_results, use legacy single-object
     if not objects:
-        return build_misp_event(assessment, entity)
+        return build_misp_event(assessment, entity, profile_event_uuid=profile_event_uuid)
 
     # Build sector list for event info
     sectors = [r.get("sector", "") for r in assessment.assessment_results]
