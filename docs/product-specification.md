@@ -361,26 +361,55 @@ Each entity assessment produces one MISP event containing:
 | **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + MISP push + save draft + Django admin + Docker playground |
 | **v1.1** | REST API (programmatic assessment access) |
 | **v1.2** | Authority & CSIRT registry — CompetentAuthority + CSIRT models, entity type → authority assignment (sector+MS), notification routing per MS national implementation (Art. 23), MISP-A push routing per authority, reference data seeding |
-| **v1.3** | Notification form generation (Art. 23 structured output — early warning, incident notification, final report) |
-| **v1.4** | MISP-A ↔ MISP-B sync — authority-side MISP receives entity profiles + assessments via MISP sync, phase 2 assessment consumed from MISP-B |
+| **v1.3** | Art. 23 notification forms (early warning structured output for entity self-reporting) |
+| **v1.4** | MISP-A ↔ MISP-B sync configuration — authority-side MISP receives entity profiles + assessments via MISP sync protocol |
 | **v1.5** | Additional national modules (as regulatory data becomes available) |
-| **v2.0** | Authority portal (CyberScale Authority) — CSIRT/CA-facing web interface connected to MISP-B, phase 2 contextual severity on authority side, cross-entity correlation, API for programmatic access |
-| **v2.1** | Temporal incident tracking (early warning → notification → final report timeline per Art. 23(4)) |
-| **v2.2** | CSIRT dashboard (active incidents, sector aggregation, cross-border impact view) |
-| **v2.3** | Exercise support (scenario injection, timed escalation for BlueOLEx/CyberEurope) |
+| **v2.0** | Authority portal (CyberScale Authority) — CSIRT/CA-facing web interface connected to MISP-B, Phase 3a national classification (multi-entity aggregation, T×O matrix), cross-entity correlation, API for programmatic access |
+| **v2.1** | Temporal incident tracking — Art. 23(4) lifecycle (early warning 24h → notification 72h → intermediate → final report 1 month), same incident evolves over time, MISP event updates |
+| **v2.2** | CSIRT dashboard — active incidents, sector aggregation, cross-border impact view, overdue notification tracking |
+| **v2.3** | MISP-B → MISP-CNW federation — Phase 3a classifications shared to CSIRT Network (Art. 15), sharing groups, tag-based sync filtering (large_scale/cyber_crisis escalation) |
+| **v2.4** | MISP-CNW ↔ MISP-CyCLONe federation — Phase 3b EU classification on CyCLONe MISP, CyCLONe officer inputs, IPCR coordination levels, bidirectional situational awareness |
+| **v2.5** | CNW portal — CSIRT Network web interface on MISP-CNW, Art. 15 sharing view, cross-border notification tracking |
+| **v2.6** | CyCLONe portal — EU-CyCLONe web interface on MISP-CyCLONe, Phase 3b execution, officer escalation UI, IPCR activation workflow |
+| **v3.0** | Exercise support (scenario injection, timed escalation for BlueOLEx/CyberEurope across all tiers) |
 
 ### Architecture
 
 ```
-Entity Side (operated by CA/CSIRT)       Authority/CSIRT Side
-──────────────────────────────────       ────────────────────
-cyberscale-web ──push──► MISP-A  ──sync──►  MISP-B ◄── authority-web (v2.0)
-(entity portal)          (entity MISP)      (authority MISP)
-                                                │
-Art. 27 profiles                         Phase 2 assessment
-Art. 23 notifications                    Cross-entity correlation
-Self-assessment (phase 1)                CSIRT dashboard (v2.2)
-PDF/MISP JSON export                     API access (v2.0)
+Tier 1: Entity                 Tier 2: National              Tier 3: EU
+──────────────                 ────────────────              ──────────
+
+cyberscale-web ──push──► MISP-A ──sync──► MISP-B ──sync──► MISP-CNW ◄── CNW portal
+(entity portal)          (entity)         (authority)       (CSIRT Network)
+                                              │                  │
+Art. 27 profiles                    Phase 3a national      Art. 15 sharing
+Art. 23 early warning               classification        Cross-border view
+Phase 1 self-assessment             T×O aggregation            │
+PDF / MISP JSON export              Multi-entity              filter:
+                                    correlation         large_scale|cyber_crisis
+                                              │                  │
+                                    authority-web          MISP-CyCLONe ◄── CyCLONe portal
+                                    (v2.0)                 (EU-CyCLONe)
+                                                                │
+                                                          Phase 3b EU classification
+                                                          Officer escalation
+                                                          IPCR coordination
+                                                          Situational awareness
+                                                                │
+                                                           ──► MISP-CNW (feedback)
 ```
 
-cyberscale-web is the entity-facing portal, managed by the competent authority or CSIRT. MISP-A stores entity profiles and assessment events. MISP-B on the authority side syncs from MISP-A and serves as the backend for authority workflows, phase 2 assessment, and API capabilities.
+**Four MISP tiers:**
+
+| MISP | Purpose | Content |
+|---|---|---|
+| **MISP-A** | Entity data | Entity profiles (Art. 27), assessment events (Phase 2), early warnings |
+| **MISP-B** | National authority | Phase 3a classifications, multi-entity aggregation, national crisis qualification |
+| **MISP-CNW** | CSIRT Network | Art. 15 cross-border sharing, national classifications from multiple MS |
+| **MISP-CyCLONe** | EU-CyCLONe | Phase 3b EU classification, officer inputs, IPCR coordination |
+
+**Sync flow:** MISP-A → MISP-B (all entity data). MISP-B → MISP-CNW (Phase 3a classifications via sharing groups). MISP-CNW → MISP-CyCLONe (large_scale/cyber_crisis events via tag-based filtering). MISP-CyCLONe → MISP-CNW (Phase 3b output, situational awareness feedback). All sync uses standard MISP federation protocol.
+
+**Custom MISP object templates** (registered on all tiers): `cyberscale-entity-profile`, `cyberscale-entity-assessment`, `cyberscale-authority-classification`, `cyberscale-crisis-qualification`.
+
+cyberscale-web is the entity-facing portal, operated by the competent authority or CSIRT. Phase 3 runs on the authority side (MISP-B). Phase 3b runs on the CyCLONe MISP, consuming national classifications from multiple MISP-Bs via MISP-CNW.

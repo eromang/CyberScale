@@ -2,7 +2,7 @@
 
 Exploration document for using MISP as a storage and information sharing engine for CyberScale. CIRCL develops and maintains MISP; CyberScale operates in the Luxembourg cybersecurity ecosystem where CIRCL is one of the national CSIRTs (alongside GOVCERT.LU) and a key actor in threat intelligence sharing. This is a natural integration path.
 
-**Status:** Design exploration. Not yet implemented.
+**Status:** Partially implemented. MISP-A push (entity profiles + assessments) operational in v1.0/v1.4. Custom object templates registered. Four-tier MISP architecture designed.
 
 ---
 
@@ -136,6 +136,48 @@ Represents an HCPN national crisis qualification result.
 
 ## Integration Architecture
 
+### Four-Tier MISP Federation
+
+```
+Tier 1: Entity                 Tier 2: National              Tier 3: EU
+──────────────                 ────────────────              ──────────
+
+cyberscale-web ──push──► MISP-A ──sync──► MISP-B ──sync──► MISP-CNW ◄── CNW portal
+(entity portal)          (entity)         (authority)       (CSIRT Network)
+                                              │                  │
+Art. 27 profiles                    Phase 3a national      Art. 15 sharing
+Art. 23 early warning               classification        Cross-border view
+Phase 1 self-assessment             T×O aggregation            │
+                                    Multi-entity          filter: large_scale
+                                    correlation            | cyber_crisis
+                                              │                  │
+                                    authority-web          MISP-CyCLONe ◄── CyCLONe portal
+                                                           (EU-CyCLONe)
+                                                                │
+                                                          Phase 3b EU classif.
+                                                          Officer escalation
+                                                          IPCR coordination
+                                                                │
+                                                           ──► MISP-CNW (feedback)
+```
+
+| MISP Instance | Content | Consumers |
+|---|---|---|
+| **MISP-A** (entity) | Entity profiles (Art. 27), assessment events (Phase 2), early warnings | MISP-B (via sync) |
+| **MISP-B** (national) | Phase 3a classifications, multi-entity aggregation, HCPN crisis qualification | Authority portal, MISP-CNW (via sharing groups) |
+| **MISP-CNW** (CSIRT Network) | National classifications from all MS, Art. 15 cross-border sharing | CNW portal, MISP-CyCLONe (filtered sync) |
+| **MISP-CyCLONe** (EU) | Phase 3b EU classification, officer inputs, IPCR coordination | CyCLONe portal, MISP-CNW (feedback) |
+
+**Sync rules:**
+- MISP-A → MISP-B: all events (entity profiles + assessments)
+- MISP-B → MISP-CNW: Phase 3a classifications via sharing groups
+- MISP-CNW → MISP-CyCLONe: events tagged `cyberscale:classification="large_scale"` or `"cyber_crisis"` (Art. 16 escalation)
+- MISP-CyCLONe → MISP-CNW: Phase 3b output + situational awareness (bidirectional)
+
+**Custom object templates** (registered on all tiers): `cyberscale-entity-profile` (template_uuid: c5e0f001-...-01), `cyberscale-entity-assessment` (...-02), `cyberscale-authority-classification`, `cyberscale-crisis-qualification`.
+
+### Legacy Single-Instance View
+
 ```
 MISP instance (CIRCL / GOVCERT.LU)
   │
@@ -266,9 +308,19 @@ For large-scale cybersecurity incidents (HCPN `large_scale_cybersecurity_inciden
 
 ## Open Questions
 
-1. **MISP instance scope:** Dedicated CyberScale MISP instance, or integrate into existing CIRCL/GOVCERT.LU instance?
-2. **Object template governance:** Who maintains the CyberScale MISP objects? Submit to MISP default templates or keep as custom?
-3. **Real-time vs batch:** Push assessments to MISP immediately (real-time), or batch publish (e.g., daily summary)?
-4. **Authentication for MCP tools:** How does the MCP server authenticate to MISP? API key in environment variable?
-5. **Bidirectional sync:** If an authority modifies a CyberScale event in MISP (e.g., overrides classification), should CyberScale ingest that as feedback?
-6. **TLP defaults:** What TLP level for automated assessments? TLP:AMBER for entity assessments, TLP:RED for crisis qualifications?
+| # | Question | Status |
+|---|---|---|
+| 1 | **MISP instance scope** | **Answered.** Four-tier federation: MISP-A (entity), MISP-B (national authority), MISP-CNW (CSIRT Network), MISP-CyCLONe (EU). Docker playground has MISP-A. |
+| 2 | **Object template governance** | **Answered.** Custom standalone templates, not submitted to MISP defaults. Registered on all tiers via `updateObjectTemplates`. |
+| 3 | **Real-time vs batch** | **Answered.** Real-time, explicit admin action per entity/assessment. |
+| 4 | **Authentication for MCP tools** | **Answered.** API key stored on Entity model (MISP-A) and as env var in Docker. Authority-side auth TBD. |
+| 5 | **Bidirectional sync** | **Partially answered.** MISP-CyCLONe → MISP-CNW feedback planned (v2.4). MISP-B → cyberscale-web feedback deferred. |
+| 6 | **TLP defaults** | **Answered.** Entity's `misp_default_tlp` (default `tlp:amber`), configurable in profile. |
+
+### Remaining open questions
+
+7. **MISP-CNW ↔ MISP-CyCLONe sharing groups:** Who configures the sharing groups and sync filters? Central ENISA coordination or per-MS setup?
+8. **Phase 3b execution location:** Does Phase 3b run as a CyberScale module consuming MISP-CyCLONe data, or as MISP workflows/automation on the CyCLONe instance?
+9. **CyCLONe officer input mechanism:** Web form on CyCLONe portal, or MISP event annotations/proposals?
+10. **Object template versioning:** How to handle template schema evolution across four MISP tiers without breaking sync?
+11. **Incident lifecycle in MISP:** Art. 23(4) phases (early warning → notification → final) as separate events, or updates to the same event? Implications for MISP sync (event updates vs new events).
