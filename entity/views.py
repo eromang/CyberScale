@@ -456,4 +456,18 @@ def impact_fields_view(request):
     if not types:
         return HttpResponse("")
 
-    return render(request, "entity/partials/impact_fields.html", {"types": types})
+    # Compute allowed MS from entity profile
+    allowed_ms = []
+    if request.user.is_authenticated:
+        try:
+            entity = Entity.objects.get(user=request.user)
+            if entity.ms_services:
+                allowed_ms_set = set(entity.ms_services) | {entity.ms_established}
+                allowed_ms = sorted(allowed_ms_set)
+        except Entity.DoesNotExist:
+            pass
+
+    return render(request, "entity/partials/impact_fields.html", {
+        "types": types,
+        "allowed_ms": allowed_ms,
+    })

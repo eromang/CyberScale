@@ -230,3 +230,43 @@ class MISPProfileExportTest(TestCase):
         self.entity.misp_profile_event_uuid = "fixed-uuid-123"
         event = build_misp_profile_event(self.entity)
         assert event["Event"]["uuid"] == "fixed-uuid-123"
+
+
+class MSAffectedFilteringTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("msfilter", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user,
+            organisation_name="Filter Corp",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            ms_services=["LU", "BE", "DE"],
+        )
+        EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        self.client = Client()
+        self.client.login(username="msfilter", password="testpass123")
+
+    def test_ms_filtered_when_services_set(self):
+        resp = self.client.get("/htmx/impact-fields/?types=energy:electricity_undertaking")
+        assert resp.status_code == 200
+        content = resp.content.decode()
+        # Should have LU, BE, DE (from ms_services + ms_established)
+        assert 'value="LU"' in content
+        assert 'value="BE"' in content
+        assert 'value="DE"' in content
+        # Should NOT have FR, IT, etc.
+        assert 'value="FR"' not in content
+        assert 'value="IT"' not in content
+
+    def test_ms_all_when_services_empty(self):
+        self.entity.ms_services = []
+        self.entity.save()
+        resp = self.client.get("/htmx/impact-fields/?types=energy:electricity_undertaking")
+        content = resp.content.decode()
+        # All 27 MS should be present
+        assert 'value="FR"' in content
+        assert 'value="IT"' in content
+        assert 'value="LU"' in content
