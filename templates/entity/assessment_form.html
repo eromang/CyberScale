@@ -4,7 +4,7 @@
 {% block content %}
 <div class="cs-page-header">
   <h2>{% if draft %}Resume Draft #{{ draft.pk }}{% else %}Incident Assessment{% endif %}</h2>
-  <p>{{ entity.organisation_name }} — {{ entity.sector|title }} / {{ entity.entity_type }} ({{ entity.ms_established }})</p>
+  <p>{{ entity.organisation_name }} — {{ entity.ms_established }}</p>
 </div>
 
 <ul class="cs-steps">
@@ -19,15 +19,33 @@
 
   <fieldset>
     <legend>Step 1 — Incident Context</legend>
+
     <label>Incident description
       {{ form1.description }}
     </label>
     {% if form1.description.errors %}<small style="color: var(--cs-significant);">{{ form1.description.errors.0 }}</small>{% endif %}
 
+    <label style="font-weight: 600;">Affected entity types</label>
+    {% if registered_types|length == 1 %}
+      <p style="color: var(--cs-text-muted);">
+        {{ registered_types.0.sector_label }} / {{ registered_types.0.label }}
+        <input type="hidden" name="affected_entity_types" value="{{ registered_types.0.sector }}:{{ registered_types.0.entity_type }}">
+      </p>
+    {% else %}
+      <div id="entity-type-checkboxes"
+           hx-get="{% url 'htmx_sector_fields' %}"
+           hx-target="#sector-specific-fields"
+           hx-trigger="change"
+           hx-include="[name='affected_entity_types']"
+           hx-vals='js:{"sectors": Array.from(document.querySelectorAll("[name=affected_entity_types]:checked")).map(e => e.value.split(":")[0]).join(",")}'>
+        {{ form1.affected_entity_types }}
+      </div>
+    {% endif %}
+    {% if form1.affected_entity_types.errors %}<small style="color: var(--cs-significant);">{{ form1.affected_entity_types.errors.0 }}</small>{% endif %}
+
     <label>Member states affected
       {{ form1.ms_affected }}
     </label>
-    <p><small style="color: var(--cs-text-muted);">Sector and entity type pre-filled from your profile: <strong>{{ entity.sector }}</strong> / <strong>{{ entity.entity_type }}</strong></small></p>
   </fieldset>
 
   <fieldset>
@@ -50,31 +68,9 @@
     </div>
   </fieldset>
 
-  <details>
-    <summary>Step 3 — Sector-Specific Fields (optional)</summary>
-    <fieldset>
-      <p><small style="color: var(--cs-text-muted);">Fill these if your entity is in a Luxembourg-regulated sector with ILR thresholds.</small></p>
-
-      <h4 style="color: var(--cs-navy);">Electricity</h4>
-      <div class="grid">
-        <label>PODs affected {{ form3.pods_affected }}</label>
-        <label>Voltage level {{ form3.voltage_level }}</label>
-        <label>SCADA unavailable (min) {{ form3.scada_unavailable_min }}</label>
-      </div>
-
-      <h4 style="color: var(--cs-navy);">Rail</h4>
-      <div class="grid">
-        <label>Trains cancelled % {{ form3.trains_cancelled_pct }}</label>
-        <label>Slots impacted {{ form3.slots_impacted }}</label>
-      </div>
-
-      <h4 style="color: var(--cs-navy);">Health</h4>
-      <div class="grid">
-        <label>Persons with health impact {{ form3.persons_health_impact }}</label>
-        <label>Analyses affected % {{ form3.analyses_affected_pct }}</label>
-      </div>
-    </fieldset>
-  </details>
+  <div id="sector-specific-fields">
+    {# Populated by HTMX when entity type checkboxes change #}
+  </div>
 
   <div class="cs-actions">
     <button type="submit" name="run_assessment">Run Assessment</button>
