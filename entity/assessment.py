@@ -208,3 +208,99 @@ def _determine_competent_authority(ms_established: str, sector: str) -> str:
             return "BNB"
         return "CCB"
     return "National competent authority"
+
+
+def run_multi_entity_assessment(
+    description: str,
+    affected_entity_types: list[dict],
+    ms_established: str = "EU",
+    ms_affected: list[str] | None = None,
+    service_impact: str = "none",
+    data_impact: str = "none",
+    financial_impact: str = "none",
+    safety_impact: str = "none",
+    affected_persons_count: int = 0,
+    suspected_malicious: bool = False,
+    impact_duration_hours: int = 0,
+    sector_specific: dict | None = None,
+) -> dict:
+    """Run the assessment engine for each affected entity type.
+
+    Args:
+        affected_entity_types: list of {"sector": "...", "entity_type": "..."} dicts
+
+    Returns dict with:
+        - per_type_results: list of per-type result dicts
+        - overall_significance: most severe significance across all types
+        - overall_significance_label: label for the most severe
+        - overall_early_warning: recommended if any type recommends it
+    """
+    per_type_results = []
+    significance_priority = {
+        "SIGNIFICANT": 6, "LIKELY": 5, "UNDETERMINED": 4,
+        "UNCERTAIN": 3, "NOT SIGNIFICANT": 2, "UNLIKELY": 1, "": 0,
+    }
+
+    for et in affected_entity_types:
+        result = run_entity_assessment(
+            description=description,
+            sector=et["sector"],
+            entity_type=et["entity_type"],
+            ms_established=ms_established,
+            ms_affected=ms_affected,
+            service_impact=service_impact,
+            data_impact=data_impact,
+            financial_impact=financial_impact,
+            safety_impact=safety_impact,
+            affected_persons_count=affected_persons_count,
+            suspected_malicious=suspected_malicious,
+            impact_duration_hours=impact_duration_hours,
+            sector_specific=sector_specific,
+        )
+
+        sig_data = result.get("significance", {})
+        significant = sig_data.get("significant_incident")
+        if isinstance(significant, str):
+            sig_label = significant.upper()
+            sig_bool = significant == "likely"
+        elif isinstance(significant, bool):
+            sig_label = "SIGNIFICANT" if significant else "NOT SIGNIFICANT"
+            sig_bool = significant
+        else:
+            sig_label = "UNDETERMINED"
+            sig_bool = None
+
+        per_type_results.append({
+            "sector": et["sector"],
+            "entity_type": et["entity_type"],
+            "significant_incident": sig_bool,
+            "significance_label": sig_label,
+            "model": result.get("model", ""),
+            "triggered_criteria": sig_data.get("triggered_criteria", []),
+            "framework": result.get("framework", ""),
+            "competent_authority": result.get("competent_authority", ""),
+            "early_warning": result.get("early_warning", {}),
+        })
+
+    # Determine overall significance (most severe)
+    overall_label = ""
+    overall_bool = None
+    for r in per_type_results:
+        if significance_priority.get(r["significance_label"], 0) > significance_priority.get(overall_label, 0):
+            overall_label = r["significance_label"]
+            overall_bool = r["significant_incident"]
+
+    # Determine overall early warning (recommended if any type recommends)
+    overall_ew = {"recommended": False, "deadline": "", "required_content": [], "next_step": ""}
+    for r in per_type_results:
+        ew = r.get("early_warning", {})
+        if ew.get("recommended"):
+            overall_ew = ew
+            break
+
+    return {
+        "per_type_results": per_type_results,
+        "overall_significance": overall_bool,
+        "overall_significance_label": overall_label,
+        "overall_early_warning": overall_ew,
+    }
