@@ -19,6 +19,29 @@ class Entity(models.Model):
     misp_api_key = models.CharField(max_length=255, blank=True)
     misp_default_tlp = models.CharField(max_length=20, default="tlp:amber")
 
+    # Art. 27 — Address & contact
+    address = models.TextField(blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+
+    # Art. 27 — Responsible person (legal/management)
+    responsible_person_name = models.CharField(max_length=255, blank=True)
+    responsible_person_email = models.EmailField(blank=True)
+
+    # Art. 27 — Technical contact (operational/incident response)
+    technical_contact_name = models.CharField(max_length=255, blank=True)
+    technical_contact_email = models.EmailField(blank=True)
+    technical_contact_phone = models.CharField(max_length=50, blank=True)
+
+    # Art. 27 — IP ranges (validated CIDR, stored as JSON list)
+    ip_ranges = models.JSONField(default=list, blank=True)
+
+    # Art. 27 — MS where services are provided
+    ms_services = models.JSONField(default=list, blank=True)
+
+    # MISP profile tracking
+    misp_profile_event_uuid = models.CharField(max_length=36, blank=True)
+
     class Meta:
         verbose_name_plural = "entities"
 
@@ -133,6 +156,7 @@ class Submission(models.Model):
         ("pdf_download", "PDF Download"),
         ("misp_json_download", "MISP JSON Download"),
         ("misp_push", "MISP Push"),
+        ("misp_profile_push", "MISP Profile Push"),
     ]
     STATUS_CHOICES = [
         ("pending", "Pending"),
