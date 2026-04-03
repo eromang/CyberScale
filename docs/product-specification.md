@@ -360,9 +360,9 @@ Each entity assessment produces one MISP event containing:
 |---|---|
 | **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + MISP push + save draft + Django admin + Docker playground |
 | **v1.1** | REST API (programmatic assessment access) |
-| **v1.2** | Notification form generation (Art. 23 structured output) |
-| **v1.3** | MISP bidirectional sync (authority feedback → entity) |
-| **v1.4** | Art. 27 entity registration — extended profile editing, MISP entity profile object + linking, admin-only MISP push, MS filtering, Docker MISP instance. ENISA export deferred. |
+| **v1.2** | Authority & CSIRT registry — CompetentAuthority + CSIRT models with MISP credentials, entity type → authority assignment (sector+MS), notification routing per MS national implementation (Art. 23), dual MISP push (CA + CSIRT), reference data seeding |
+| **v1.3** | Notification form generation (Art. 23 structured output) |
+| **v1.4** | MISP bidirectional sync (authority feedback → entity) |
 | **v1.5** | Additional national modules (as regulatory data becomes available) |
 | **v2.0** | Temporal incident tracking (early warning → notification → final) |
 | **v2.1** | CSIRT dashboard (active incidents, sector aggregation) |
