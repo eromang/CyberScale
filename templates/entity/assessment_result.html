@@ -7,7 +7,7 @@
   <p>{{ entity.organisation_name }} — {{ assessment.created_at|date:"Y-m-d H:i" }} UTC</p>
 </div>
 
-{# Significance banner #}
+{# Overall significance banner #}
 {% if assessment.result_significance_label == "SIGNIFICANT" or assessment.result_significance_label == "LIKELY" %}
   <div class="cs-sig-banner significant">
 {% elif assessment.result_significance_label == "NOT SIGNIFICANT" or assessment.result_significance_label == "UNLIKELY" %}
@@ -17,50 +17,76 @@
 {% endif %}
     <span class="cs-sig-label">{{ assessment.result_significance_label }}</span>
     <span class="cs-sig-meta">
-      {% if assessment.result_framework %}{{ assessment.result_framework }}{% endif %}
-      {% if assessment.result_competent_authority %} — {{ assessment.result_competent_authority }}{% endif %}
-      &middot; {{ assessment.result_model }}
+      Overall determination across {{ assessment.affected_entity_types|length }} entity type{{ assessment.affected_entity_types|length|pluralize }}
     </span>
   </div>
 
-{# Two-column: Criteria + Early Warning #}
-<div class="grid">
-  {% if assessment.result_criteria %}
-  <div class="cs-card">
-    <h3>Triggered Criteria</h3>
-    <ul class="cs-criteria-list">
-      {% for criterion in assessment.result_criteria %}
-        <li>{{ criterion }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-
-  {% if assessment.result_early_warning %}
-  <div class="cs-card">
-    <h3>Early Warning</h3>
-    {% with ew=assessment.result_early_warning %}
-      {% if ew.recommended %}
-        <p><span class="badge badge-significant">RECOMMENDED</span></p>
-        <p><strong>Deadline:</strong> {{ ew.deadline }} from awareness</p>
-        {% if ew.required_content %}
-          <p><strong>Required content:</strong></p>
-          <ul>
-            {% for item in ew.required_content %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
+{# Per-entity-type result cards #}
+{% for r in assessment.assessment_results %}
+<div class="cs-card">
+  <h3>{{ r.sector|default:""|title }} / {{ r.entity_type|default:"" }}</h3>
+  <div class="grid">
+    <div>
+      <p style="font-size: 1.2rem;">
+        {% if r.significance_label == "SIGNIFICANT" or r.significance_label == "LIKELY" %}
+          <span class="badge badge-significant">{{ r.significance_label }}</span>
+        {% elif r.significance_label == "NOT SIGNIFICANT" or r.significance_label == "UNLIKELY" %}
+          <span class="badge badge-not-significant">{{ r.significance_label }}</span>
+        {% else %}
+          <span class="badge badge-undetermined">{{ r.significance_label }}</span>
         {% endif %}
-      {% else %}
-        <p><span class="badge badge-not-significant">NOT RECOMMENDED</span></p>
+        <span class="badge badge-model">{{ r.model }}</span>
+      </p>
+      {% if r.framework %}<p><strong>Framework:</strong> {{ r.framework }}</p>{% endif %}
+      {% if r.competent_authority %}<p><strong>Authority:</strong> {{ r.competent_authority }}</p>{% endif %}
+    </div>
+    <div>
+      {% if r.triggered_criteria %}
+        <p><strong>Triggered criteria:</strong></p>
+        <ul class="cs-criteria-list">
+          {% for c in r.triggered_criteria %}
+            <li>{{ c }}</li>
+          {% endfor %}
+        </ul>
       {% endif %}
-      {% if ew.next_step %}
-        <p style="margin-top: 0.75rem;"><strong>Next steps:</strong> {{ ew.next_step }}</p>
-      {% endif %}
-    {% endwith %}
+    </div>
   </div>
+  {% if r.early_warning.recommended %}
+    <p style="margin-top: 0.5rem;"><span class="badge badge-significant">EARLY WARNING</span> Deadline: {{ r.early_warning.deadline }}</p>
   {% endif %}
 </div>
+{% empty %}
+{# Fallback for old assessments without assessment_results #}
+<div class="cs-card">
+  <h3>{{ assessment.sector|title }} / {{ assessment.entity_type }}</h3>
+  <p><span class="badge badge-model">{{ assessment.result_model }}</span></p>
+  {% if assessment.result_framework %}<p><strong>Framework:</strong> {{ assessment.result_framework }}</p>{% endif %}
+  {% if assessment.result_competent_authority %}<p><strong>Authority:</strong> {{ assessment.result_competent_authority }}</p>{% endif %}
+  {% if assessment.result_criteria %}
+    <ul class="cs-criteria-list">
+      {% for c in assessment.result_criteria %}<li>{{ c }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endfor %}
+
+{# Early warning (overall) #}
+{% if assessment.result_early_warning.recommended %}
+<div class="cs-card">
+  <h3>Early Warning</h3>
+  <p><span class="badge badge-significant">RECOMMENDED</span></p>
+  <p><strong>Deadline:</strong> {{ assessment.result_early_warning.deadline }} from awareness</p>
+  {% if assessment.result_early_warning.required_content %}
+    <p><strong>Required content:</strong></p>
+    <ul>
+      {% for item in assessment.result_early_warning.required_content %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% if assessment.result_early_warning.next_step %}
+    <p><strong>Next steps:</strong> {{ assessment.result_early_warning.next_step }}</p>
+  {% endif %}
+</div>
+{% endif %}
 
 {# Impact summary #}
 <div class="cs-card">
@@ -77,7 +103,6 @@
   </table>
 </div>
 
-{# Description #}
 <div class="cs-card">
   <h3>Incident Description</h3>
   <p>{{ assessment.description }}</p>
@@ -86,7 +111,13 @@
 {# Actions #}
 <div class="cs-actions">
   <a href="{% url 'assessment_pdf' assessment.pk %}" role="button">Download PDF</a>
-  <a href="{% url 'assessment_misp_json' assessment.pk %}" role="button" class="secondary">Download MISP JSON</a>
+  {% if assessment.assessment_results|length > 1 %}
+    {% for r in assessment.assessment_results %}
+      <a href="{% url 'assessment_misp_json' assessment.pk %}?type_index={{ forloop.counter0 }}" role="button" class="secondary">MISP: {{ r.sector|title }}</a>
+    {% endfor %}
+  {% else %}
+    <a href="{% url 'assessment_misp_json' assessment.pk %}" role="button" class="secondary">Download MISP JSON</a>
+  {% endif %}
   <a href="{% url 'dashboard' %}" role="button" class="outline">Back to Dashboard</a>
 </div>
 

@@ -83,6 +83,75 @@ def build_misp_event(assessment, entity) -> dict:
     }
 
 
+def build_misp_event_for_type(assessment, entity, type_result: dict) -> dict:
+    """Build a MISP event for a specific entity type result."""
+    event_uuid = str(uuid.uuid4())
+
+    sig_label = type_result.get("significance_label", "")
+    if sig_label in ("SIGNIFICANT", "LIKELY"):
+        threat_level_id = "1"
+        sig_tag = "significant"
+    elif sig_label in ("NOT SIGNIFICANT", "UNLIKELY"):
+        threat_level_id = "3"
+        sig_tag = "not-significant"
+    else:
+        threat_level_id = "2"
+        sig_tag = "undetermined"
+
+    ew = type_result.get("early_warning", {})
+    criteria = type_result.get("triggered_criteria", [])
+    criteria_text = " | ".join(criteria) if isinstance(criteria, list) and criteria else ""
+
+    attributes = [
+        _attr("sector", "text", type_result.get("sector", "")),
+        _attr("entity-type", "text", type_result.get("entity_type", "")),
+        _attr("ms-established", "text", entity.ms_established),
+        _attr("description", "text", assessment.description),
+        _attr("service-impact", "text", assessment.service_impact),
+        _attr("data-impact", "text", assessment.data_impact),
+        _attr("safety-impact", "text", assessment.safety_impact),
+        _attr("financial-impact", "text", assessment.financial_impact),
+        _attr("affected-persons-count", "counter", str(assessment.affected_persons_count)),
+        _attr("impact-duration-hours", "counter", str(assessment.impact_duration_hours)),
+        _attr("suspected-malicious", "boolean", "1" if assessment.suspected_malicious else "0"),
+        _attr("significant-incident", "boolean", "1" if type_result.get("significant_incident") else "0"),
+        _attr("significance-model", "text", type_result.get("model", "")),
+        _attr("competent-authority", "text", type_result.get("competent_authority", "")),
+        _attr("framework", "text", type_result.get("framework", "")),
+        _attr("early-warning-recommended", "boolean", "1" if ew.get("recommended") else "0"),
+        _attr("early-warning-deadline", "text", ew.get("deadline", "")),
+    ]
+    if criteria_text:
+        attributes.append(_attr("triggered-criteria", "text", criteria_text))
+
+    tlp = entity.misp_default_tlp or "tlp:amber"
+
+    return {
+        "Event": {
+            "info": f"CyberScale entity assessment: {type_result.get('sector', '')} / {type_result.get('entity_type', '')}",
+            "date": assessment.created_at.strftime("%Y-%m-%d"),
+            "threat_level_id": threat_level_id,
+            "analysis": "2",
+            "distribution": "1",
+            "uuid": event_uuid,
+            "Tag": [
+                {"name": 'cyberscale:phase="phase-2"'},
+                {"name": f'cyberscale:significance-model="{type_result.get("model", "")}"'},
+                {"name": f'nis2:significance="{sig_tag}"'},
+                {"name": tlp},
+            ],
+            "Object": [
+                {
+                    "name": "cyberscale-entity-assessment",
+                    "meta-category": "misc",
+                    "uuid": str(uuid.uuid4()),
+                    "Attribute": attributes,
+                }
+            ],
+        }
+    }
+
+
 def _attr(relation: str, attr_type: str, value: str) -> dict:
     return {
         "object_relation": relation,

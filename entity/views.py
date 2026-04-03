@@ -290,15 +290,28 @@ def assessment_misp_json_view(request, pk):
         return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
 
-    from .misp_export import build_misp_event
+    from .misp_export import build_misp_event, build_misp_event_for_type
     import uuid as uuid_mod
 
-    # Generate UUID if not set
-    if not assessment.misp_event_uuid:
-        assessment.misp_event_uuid = str(uuid_mod.uuid4())
-        assessment.save(update_fields=["misp_event_uuid"])
+    type_index = request.GET.get("type_index")
 
-    event = build_misp_event(assessment, entity)
+    if type_index is not None and assessment.assessment_results:
+        idx = int(type_index)
+        if 0 <= idx < len(assessment.assessment_results):
+            type_result = assessment.assessment_results[idx]
+            event = build_misp_event_for_type(assessment, entity, type_result)
+            sector = type_result.get("sector", "unknown")
+            filename = f"cyberscale-assessment-{assessment.pk}-{sector}.misp.json"
+        else:
+            event = build_misp_event(assessment, entity)
+            filename = f"cyberscale-assessment-{assessment.pk}.misp.json"
+    else:
+        if not assessment.misp_event_uuid:
+            assessment.misp_event_uuid = str(uuid_mod.uuid4())
+            assessment.save(update_fields=["misp_event_uuid"])
+        event = build_misp_event(assessment, entity)
+        filename = f"cyberscale-assessment-{assessment.pk}.misp.json"
+
     json_bytes = json.dumps(event, indent=2, ensure_ascii=False).encode("utf-8")
 
     Submission.objects.create(
@@ -306,9 +319,7 @@ def assessment_misp_json_view(request, pk):
     )
 
     response = HttpResponse(json_bytes, content_type="application/json")
-    response["Content-Disposition"] = (
-        f'attachment; filename="cyberscale-assessment-{assessment.pk}.misp.json"'
-    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 
