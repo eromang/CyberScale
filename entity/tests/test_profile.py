@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
 from entity.forms import EntityProfileForm
-from entity.models import Entity
+from entity.models import Entity, EntityType
 
 
 class EntityProfileFormTest(TestCase):
@@ -144,3 +144,89 @@ class ProfileEditViewTest(TestCase):
     def test_dashboard_has_edit_profile_link(self):
         resp = self.client.get("/")
         assert b"/profile/edit/" in resp.content
+
+
+class MISPProfileExportTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("mispprof", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user,
+            organisation_name="MISP Corp",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            address="42 Rue du Code",
+            contact_email="info@mispcorp.lu",
+            contact_phone="+352 123",
+            responsible_person_name="Alice",
+            responsible_person_email="alice@mispcorp.lu",
+            technical_contact_name="Bob",
+            technical_contact_email="bob@mispcorp.lu",
+            technical_contact_phone="+352 456",
+            ip_ranges=["192.168.1.0/24", "10.0.0.0/8"],
+            ms_services=["LU", "BE"],
+            misp_default_tlp="tlp:green",
+        )
+        EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        EntityType.objects.create(
+            entity=self.entity, sector="health", entity_type="healthcare_provider",
+        )
+
+    def test_build_profile_event_structure(self):
+        from entity.misp_profile_export import build_misp_profile_event
+
+        event = build_misp_profile_event(self.entity)
+        assert "Event" in event
+        evt = event["Event"]
+        assert "CyberScale entity profile: MISP Corp" == evt["info"]
+        assert evt["threat_level_id"] == "4"
+        assert len(evt["Object"]) == 1
+
+        obj = evt["Object"][0]
+        assert obj["name"] == "cyberscale-entity-profile"
+
+        attrs = {a["object_relation"]: a["value"] for a in obj["Attribute"] if a["object_relation"] not in ("ip-range", "sector", "entity-type")}
+        assert attrs["organisation-name"] == "MISP Corp"
+        assert attrs["address"] == "42 Rue du Code"
+        assert attrs["contact-email"] == "info@mispcorp.lu"
+        assert attrs["responsible-person-name"] == "Alice"
+        assert attrs["technical-contact-name"] == "Bob"
+        assert attrs["ms-established"] == "LU"
+        assert attrs["ms-services"] == "LU, BE"
+
+    def test_build_profile_event_ip_ranges(self):
+        from entity.misp_profile_export import build_misp_profile_event
+
+        event = build_misp_profile_event(self.entity)
+        obj = event["Event"]["Object"][0]
+        ip_attrs = [a for a in obj["Attribute"] if a["object_relation"] == "ip-range"]
+        assert len(ip_attrs) == 2
+        assert ip_attrs[0]["value"] == "192.168.1.0/24"
+        assert ip_attrs[0]["type"] == "ip-src"
+
+    def test_build_profile_event_entity_types(self):
+        from entity.misp_profile_export import build_misp_profile_event
+
+        event = build_misp_profile_event(self.entity)
+        obj = event["Event"]["Object"][0]
+        sector_attrs = [a for a in obj["Attribute"] if a["object_relation"] == "sector"]
+        type_attrs = [a for a in obj["Attribute"] if a["object_relation"] == "entity-type"]
+        assert len(sector_attrs) == 2
+        assert len(type_attrs) == 2
+
+    def test_build_profile_event_tags(self):
+        from entity.misp_profile_export import build_misp_profile_event
+
+        event = build_misp_profile_event(self.entity)
+        tag_names = [t["name"] for t in event["Event"]["Tag"]]
+        assert 'cyberscale:type="entity-profile"' in tag_names
+        assert "tlp:green" in tag_names
+
+    def test_build_profile_event_uuid(self):
+        from entity.misp_profile_export import build_misp_profile_event
+
+        self.entity.misp_profile_event_uuid = "fixed-uuid-123"
+        event = build_misp_profile_event(self.entity)
+        assert event["Event"]["uuid"] == "fixed-uuid-123"
