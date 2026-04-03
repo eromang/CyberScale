@@ -28,6 +28,8 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
+      MISP_URL: "https://misp"
+      MISP_API_KEY: "cyberscale-misp-test-api-key"
     volumes:
       - .:/app
       - model_cache:/app/data/models
@@ -37,6 +39,52 @@ services:
       postgres:
         condition: service_healthy
 
+  misp-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: misp_dev
+      MYSQL_ROOT_PASSWORD: misp_root_dev
+    volumes:
+      - misp_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmisp_root_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  misp-redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  misp:
+    image: ghcr.io/misp/misp-docker/misp-core:latest
+    environment:
+      MYSQL_HOST: misp-db
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: misp_dev
+      REDIS_HOST: misp-redis
+      BASE_URL: "https://localhost"
+      ADMIN_EMAIL: "admin@admin.test"
+      ADMIN_PASSWORD: "admin"
+      ADMIN_KEY: "cyberscale-misp-test-api-key"
+      NOREDIR: "true"
+    ports:
+      - "8443:443"
+    depends_on:
+      misp-db:
+        condition: service_healthy
+      misp-redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   model_cache:
+  misp_db_data:
