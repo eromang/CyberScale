@@ -81,41 +81,46 @@ CyberScale is a multi-phase cyber incident severity assessment platform that hel
 
 Entity registers with:
 - Organisation name
-- NIS2 sector (dropdown)
+- NIS2 sector (dropdown, HTMX-filtered)
 - Entity type (filtered by sector)
 - Member state established
 - Competent authority (auto-determined from sector + MS)
 - Optional: MISP instance URL + API key (for direct push)
 
+Post-registration, entities can add multiple entity types from their dashboard (e.g., electricity_undertaking + drinking_water_supplier). Entity types can be removed (minimum one required).
+
 ### 4.2 Incident Assessment
 
-**Step 1 — Incident context**
+**Step 1 — Incident context** (global, incident-level)
 - Free-text description
-- Sector + entity type (pre-filled from profile)
-- MS affected (multi-select)
+- Affected entity types (multi-select from registered types)
+- Suspected malicious: yes / no
+- Physical access breach: yes / no (IR entities only)
 
-**Step 2 — Impact assessment** (structured fields)
+**Step 2 — Per-entity-type impact** (one fieldset per selected entity type, HTMX-rendered)
+
+Each entity type gets its own:
+- MS affected (multi-select — different types can have different geographic scope)
 - Service impact: none / partial / degraded / unavailable / sustained
 - Data impact: none / accessed / exfiltrated / compromised / systemic
 - Safety impact: none / health_risk / health_damage / death
 - Financial impact: none / minor / significant / severe
 - Affected persons count
 - Impact duration (hours)
-- Suspected malicious: yes / no
-- Physical access breach: yes / no (IR entities only)
+- Sector-specific fields (inline, only shown for relevant sectors):
+  - LU electricity: PODs affected, voltage level, SCADA unavailable minutes
+  - LU rail: trains cancelled %, slots impacted
+  - LU health: persons with health impact, analyses affected %
 
-**Step 3 — Sector-specific fields** (conditional, shown only when relevant)
-- LU electricity: PODs affected, voltage level, SCADA unavailable minutes
-- LU rail: trains cancelled %, slots impacted
-- LU health: persons with health impact, analyses affected %
-- (Other LU/BE sector fields as applicable)
-
-**Step 4 — Result**
-- Significance determination: SIGNIFICANT / NOT SIGNIFICANT / UNDETERMINED
-- Framework: NIS2 / DORA / ILR / CCB NIS2
-- Competent authority: ILR / CCB / CSSF / BNB
-- Triggered criteria (with explanations)
+**Step 3 — Result** (per-entity-type + overall)
+- Overall significance: most severe across all affected entity types
+- Per-entity-type result cards:
+  - Significance determination: SIGNIFICANT / NOT SIGNIFICANT / UNDETERMINED
+  - Framework: NIS2 / DORA / ILR / CCB NIS2
+  - Competent authority: ILR / CCB / CSSF / BNB
+  - Triggered criteria (with explanations)
 - Early warning: RECOMMENDED / NOT RECOMMENDED
+  - Recommended if any entity type triggers it
   - Deadline (24h / 4h for DORA / 24h for BE trust services)
   - Required content for notification
 - Next steps (actionable guidance)
@@ -124,14 +129,16 @@ Entity registers with:
 
 | Action | Output | Destination |
 |---|---|---|
-| **Download PDF** | Assessment report with all details | Entity internal records |
-| **Download MISP JSON** | `cyberscale-entity-assessment` MISP event | Manual import to authority MISP |
-| **Push to CSIRT** | MISP event via API | Authority MISP instance (configured in entity profile) |
+| **Download PDF** | Assessment report with per-type results + per-type impacts | Entity internal records |
+| **Download MISP JSON** | Global MISP event (one object per entity type) | Manual import to authority MISP |
+| **Download per-type MISP** | Single-type MISP event (when multiple types) | Sector-specific authority import |
+| **Push to CSIRT** | MISP event via API (v1.0 pending) | Authority MISP instance |
 | **Save draft** | Persisted in database | Resume later |
+| **Delete draft** | Remove incomplete assessment | Dashboard action |
 
 ### 4.4 Assessment History
 
-Entity can view past assessments, re-export PDF/MISP, track submission status.
+Entity can view past assessments, re-export PDF/MISP, track submission status. Draft assessments shown with DRAFT badge and resume/delete actions.
 
 ---
 
@@ -180,28 +187,41 @@ Entity can view past assessments, re-export PDF/MISP, track submission status.
 ```
 Entity (Django User extension)
 ├── organisation_name
-├── sector
-├── entity_type
+├── sector (legacy — primary sector)
+├── entity_type (legacy — primary entity type)
 ├── ms_established
 ├── competent_authority (auto)
 ├── misp_instance_url (optional)
 ├── misp_api_key (encrypted, optional)
 └── misp_default_tlp
 
+EntityType (M2M — one Entity has many)
+├── entity (FK → Entity)
+├── sector
+├── entity_type
+└── added_at
+
 Assessment
 ├── entity (FK → Entity)
 ├── created_at
 ├── status: draft / completed / submitted
 ├── description (text)
-├── impact fields (service, data, safety, financial, persons, duration, malicious)
-├── sector_specific (JSON)
-├── result_significance (bool | null)
-├── result_model (ir_thresholds / national_lu / national_be / nis2_ml)
-├── result_criteria (JSON)
-├── result_framework (text)
+├── suspected_malicious (bool — global, incident-level)
+├── physical_access_breach (bool — global)
+├── affected_entity_types (JSON — list of {sector, entity_type})
+├── per_type_impacts (JSON — per-type MS affected, impacts, sector_specific)
+├── impact fields (service, data, safety, financial, persons, duration — backward compat, worst-case)
+├── sector_specific (JSON — backward compat)
+├── assessment_results (JSON — per-type significance results)
+├── result_significance (bool | null — overall, most severe)
+├── result_significance_label (text — overall)
+├── result_model (text — primary type's model)
+├── result_criteria (JSON — primary type's criteria)
+├── result_framework (text — primary type's framework)
 ├── result_competent_authority (text)
-├── result_early_warning (JSON)
-├── misp_event_uuid (optional — set after push)
+├── result_early_warning (JSON — overall)
+├── result_raw (JSON — full engine output)
+├── misp_event_uuid (optional — set after export)
 └── pdf_generated_at (optional)
 
 Submission
