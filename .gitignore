@@ -24,3 +24,6 @@ training/data/
 
 # Poetry
 poetry.lock
+
+# Django
+staticfiles/

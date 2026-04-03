@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cyberscale
+      POSTGRES_USER: cyberscale
+      POSTGRES_PASSWORD: cyberscale_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberscale"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cyberscale-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DATABASE_URL: postgres://cyberscale:cyberscale_dev@postgres:5432/cyberscale
+      SECRET_KEY: dev-secret-key-change-in-production
+      DEBUG: "true"
+      ALLOWED_HOSTS: "*"
+    volumes:
+      - .:/app
+      - model_cache:/app/data/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  model_cache:
