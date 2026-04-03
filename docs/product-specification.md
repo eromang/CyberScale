@@ -132,7 +132,7 @@ Each entity type gets its own:
 | **Download PDF** | Assessment report with per-type results + per-type impacts | Entity internal records |
 | **Download MISP JSON** | Global MISP event (one object per entity type) | Manual import to authority MISP |
 | **Download per-type MISP** | Single-type MISP event (when multiple types) | Sector-specific authority import |
-| **Push to CSIRT** | MISP event via API (v1.0 pending) | Authority MISP instance |
+| **Push to CSIRT** | MISP event via PyMISP API | Authority MISP instance |
 | **Save draft** | Persisted in database | Resume later |
 | **Delete draft** | Remove incomplete assessment | Dashboard action |
 
@@ -358,11 +358,12 @@ Each entity assessment produces one MISP event containing:
 
 | Version | Scope |
 |---|---|
-| **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + save draft + Django admin + Docker playground |
-| **v1.1** | Notification form generation (Art. 23 structured output) |
-| **v1.2** | MISP bidirectional sync (authority feedback → entity) |
-| **v1.3** | Art. 27 entity registration — extended profile editing (address, contact, IP ranges, responsible person, org name, MS established), multi-MS service provision, ENISA registration data export, entity profile as MISP object (`cyberscale-entity-profile`) for authority push/import |
-| **v1.4** | Additional national modules (as regulatory data becomes available) |
+| **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + MISP push + save draft + Django admin + Docker playground |
+| **v1.1** | REST API (programmatic assessment access) |
+| **v1.2** | Notification form generation (Art. 23 structured output) |
+| **v1.3** | MISP bidirectional sync (authority feedback → entity) |
+| **v1.4** | Art. 27 entity registration — extended profile editing, MISP entity profile object + linking, admin-only MISP push, MS filtering, Docker MISP instance. ENISA export deferred. |
+| **v1.5** | Additional national modules (as regulatory data becomes available) |
 | **v2.0** | Temporal incident tracking (early warning → notification → final) |
 | **v2.1** | CSIRT dashboard (active incidents, sector aggregation) |
 | **v2.2** | Exercise support (scenario injection, timed escalation for BlueOLEx/CyberEurope) |
