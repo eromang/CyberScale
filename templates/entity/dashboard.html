@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — CyberScale{% endblock %}
+
+{% block content %}
+<div class="cs-profile">
+  <div class="cs-profile-icon">{{ entity.organisation_name|truncatechars:1 }}</div>
+  <div class="cs-profile-info">
+    <h3>{{ entity.organisation_name }}</h3>
+    <p>{{ entity.sector|title }} / {{ entity.entity_type }} — {{ entity.ms_established }}</p>
+  </div>
+</div>
+
+<a href="{% url 'assessment_form' %}" role="button">New Incident Assessment</a>
+
+{% if assessments %}
+<div class="cs-card" style="margin-top: 1.5rem;">
+  <h3>Recent Assessments</h3>
+  <figure>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Significance</th>
+          <th>Model</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assessments %}
+        <tr>
+          <td>{{ a.pk }}</td>
+          <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ a.description|truncatewords:10 }}</td>
+          <td>
+            {% if a.result_significance_label == "SIGNIFICANT" or a.result_significance_label == "LIKELY" %}
+              <span class="badge badge-significant">{{ a.result_significance_label }}</span>
+            {% elif a.result_significance_label == "NOT SIGNIFICANT" or a.result_significance_label == "UNLIKELY" %}
+              <span class="badge badge-not-significant">{{ a.result_significance_label }}</span>
+            {% else %}
+              <span class="badge badge-undetermined">{{ a.result_significance_label }}</span>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-model">{{ a.result_model }}</span></td>
+          <td>
+            <a href="{% url 'assessment_result' a.pk %}">View</a>
+            &middot; <a href="{% url 'assessment_pdf' a.pk %}">PDF</a>
+            &middot; <a href="{% url 'assessment_misp_json' a.pk %}">MISP</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </figure>
+</div>
+{% else %}
+  <p style="margin-top: 1.5rem; color: var(--cs-text-muted);">No assessments yet. Create your first incident assessment above.</p>
+{% endif %}
+{% endblock %}
