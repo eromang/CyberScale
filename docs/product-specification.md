@@ -360,10 +360,27 @@ Each entity assessment produces one MISP event containing:
 |---|---|
 | **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + MISP push + save draft + Django admin + Docker playground |
 | **v1.1** | REST API (programmatic assessment access) |
-| **v1.2** | Authority & CSIRT registry — CompetentAuthority + CSIRT models with MISP credentials, entity type → authority assignment (sector+MS), notification routing per MS national implementation (Art. 23), dual MISP push (CA + CSIRT), reference data seeding |
-| **v1.3** | Notification form generation (Art. 23 structured output) |
-| **v1.4** | MISP bidirectional sync (authority feedback → entity) |
+| **v1.2** | Authority & CSIRT registry — CompetentAuthority + CSIRT models, entity type → authority assignment (sector+MS), notification routing per MS national implementation (Art. 23), MISP-A push routing per authority, reference data seeding |
+| **v1.3** | Notification form generation (Art. 23 structured output — early warning, incident notification, final report) |
+| **v1.4** | MISP-A ↔ MISP-B sync — authority-side MISP receives entity profiles + assessments via MISP sync, phase 2 assessment consumed from MISP-B |
 | **v1.5** | Additional national modules (as regulatory data becomes available) |
-| **v2.0** | Temporal incident tracking (early warning → notification → final) |
-| **v2.1** | CSIRT dashboard (active incidents, sector aggregation) |
-| **v2.2** | Exercise support (scenario injection, timed escalation for BlueOLEx/CyberEurope) |
+| **v2.0** | Authority portal (CyberScale Authority) — CSIRT/CA-facing web interface connected to MISP-B, phase 2 contextual severity on authority side, cross-entity correlation, API for programmatic access |
+| **v2.1** | Temporal incident tracking (early warning → notification → final report timeline per Art. 23(4)) |
+| **v2.2** | CSIRT dashboard (active incidents, sector aggregation, cross-border impact view) |
+| **v2.3** | Exercise support (scenario injection, timed escalation for BlueOLEx/CyberEurope) |
+
+### Architecture
+
+```
+Entity Side (operated by CA/CSIRT)       Authority/CSIRT Side
+──────────────────────────────────       ────────────────────
+cyberscale-web ──push──► MISP-A  ──sync──►  MISP-B ◄── authority-web (v2.0)
+(entity portal)          (entity MISP)      (authority MISP)
+                                                │
+Art. 27 profiles                         Phase 2 assessment
+Art. 23 notifications                    Cross-entity correlation
+Self-assessment (phase 1)                CSIRT dashboard (v2.2)
+PDF/MISP JSON export                     API access (v2.0)
+```
+
+cyberscale-web is the entity-facing portal, managed by the competent authority or CSIRT. MISP-A stores entity profiles and assessment events. MISP-B on the authority side syncs from MISP-A and serves as the backend for authority workflows, phase 2 assessment, and API capabilities.
