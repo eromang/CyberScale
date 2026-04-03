@@ -1,0 +1,365 @@
+/* CyberScale — Professional/Institutional Theme
+   Layered on top of Pico CSS. Navy primary, steel secondary,
+   severity-coded accents. */
+
+/* ---- Color tokens ---- */
+:root {
+  --cs-navy: #1a237e;
+  --cs-navy-light: #283593;
+  --cs-navy-dark: #0d1452;
+  --cs-steel: #455a64;
+  --cs-bg: #f8f9fa;
+  --cs-surface: #ffffff;
+  --cs-border: #dee2e6;
+  --cs-significant: #c62828;
+  --cs-significant-bg: #fef0f0;
+  --cs-not-significant: #2e7d32;
+  --cs-not-significant-bg: #f0fdf4;
+  --cs-undetermined: #f9a825;
+  --cs-undetermined-bg: #fffde7;
+  --cs-text: #212529;
+  --cs-text-muted: #6c757d;
+}
+
+/* ---- Pico overrides ---- */
+:root {
+  --pico-primary: var(--cs-navy);
+  --pico-primary-hover: var(--cs-navy-light);
+  --pico-font-size: 15px;
+}
+
+body {
+  background: var(--cs-bg);
+  color: var(--cs-text);
+}
+
+/* ---- Navigation ---- */
+nav.cs-nav {
+  background: var(--cs-navy);
+  padding: 0 1.5rem;
+  margin-bottom: 0;
+}
+
+nav.cs-nav ul {
+  margin: 0;
+  padding: 0;
+}
+
+nav.cs-nav a,
+nav.cs-nav a:visited {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+nav.cs-nav a:hover {
+  color: #fff;
+}
+
+nav.cs-nav .cs-brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+nav.cs-nav .cs-brand::before {
+  content: "◆ ";
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* ---- Page header ---- */
+.cs-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.cs-page-header h2 {
+  color: var(--cs-navy);
+  margin-bottom: 0.25rem;
+}
+
+.cs-page-header p {
+  color: var(--cs-text-muted);
+  margin-top: 0;
+}
+
+/* ---- Cards ---- */
+.cs-card {
+  background: var(--cs-surface);
+  border: 1px solid var(--cs-border);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.cs-card h3 {
+  color: var(--cs-navy);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--cs-navy);
+}
+
+/* ---- Significance banner ---- */
+.cs-sig-banner {
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.cs-sig-banner.significant {
+  background: var(--cs-significant-bg);
+  border: 2px solid var(--cs-significant);
+}
+
+.cs-sig-banner.not-significant {
+  background: var(--cs-not-significant-bg);
+  border: 2px solid var(--cs-not-significant);
+}
+
+.cs-sig-banner.undetermined {
+  background: var(--cs-undetermined-bg);
+  border: 2px solid var(--cs-undetermined);
+}
+
+.cs-sig-label {
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.cs-sig-banner.significant .cs-sig-label { color: var(--cs-significant); }
+.cs-sig-banner.not-significant .cs-sig-label { color: var(--cs-not-significant); }
+.cs-sig-banner.undetermined .cs-sig-label { color: var(--cs-undetermined); }
+
+.cs-sig-meta {
+  color: var(--cs-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ---- Badges ---- */
+.badge {
+  display: inline-block;
+  padding: 0.2em 0.65em;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-significant,
+.badge-likely {
+  background: var(--cs-significant);
+  color: #fff;
+}
+
+.badge-not-significant,
+.badge-unlikely {
+  background: var(--cs-not-significant);
+  color: #fff;
+}
+
+.badge-undetermined,
+.badge-uncertain {
+  background: var(--cs-undetermined);
+  color: #000;
+}
+
+.badge-model {
+  background: var(--cs-navy);
+  color: #fff;
+  font-size: 0.75em;
+}
+
+/* ---- Criteria list ---- */
+.cs-criteria-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cs-criteria-list li {
+  padding: 0.4rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.cs-criteria-list li::before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+  color: var(--cs-significant);
+  font-weight: bold;
+}
+
+/* ---- Step indicators ---- */
+.cs-steps {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.cs-step {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem;
+  border-bottom: 3px solid var(--cs-border);
+  color: var(--cs-text-muted);
+  font-size: 0.85rem;
+}
+
+.cs-step.active {
+  border-bottom-color: var(--cs-navy);
+  color: var(--cs-navy);
+  font-weight: 600;
+}
+
+.cs-step-num {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1.5rem;
+  border-radius: 50%;
+  background: var(--cs-border);
+  color: var(--cs-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-right: 0.3rem;
+  text-align: center;
+}
+
+.cs-step.active .cs-step-num {
+  background: var(--cs-navy);
+  color: #fff;
+}
+
+/* ---- Form sections ---- */
+fieldset {
+  border: 1px solid var(--cs-border);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: var(--cs-surface);
+}
+
+fieldset legend {
+  color: var(--cs-navy);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0 0.5rem;
+}
+
+/* ---- Tables ---- */
+table {
+  font-size: 0.9rem;
+}
+
+thead th {
+  background: var(--cs-navy);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+tbody tr:hover {
+  background: #f1f3f5;
+}
+
+/* ---- Action bar ---- */
+.cs-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.cs-actions a[role="button"] {
+  font-size: 0.9rem;
+}
+
+/* ---- Profile card ---- */
+.cs-profile {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.cs-profile-info h3 {
+  margin: 0 0 0.25rem 0;
+  color: var(--cs-navy);
+  border: none;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.cs-profile-info p {
+  margin: 0;
+  color: var(--cs-text-muted);
+  font-size: 0.9rem;
+}
+
+.cs-profile-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--cs-navy);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+/* ---- Footer ---- */
+footer.cs-footer {
+  border-top: 1px solid var(--cs-border);
+  margin-top: 3rem;
+  padding: 1rem 0;
+}
+
+footer.cs-footer small {
+  color: var(--cs-text-muted);
+}
+
+/* ---- Login/Register card ---- */
+.cs-auth-card {
+  max-width: 480px;
+  margin: 2rem auto;
+}
+
+/* ---- Details (sector-specific) ---- */
+details {
+  border: 1px solid var(--cs-border);
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  background: var(--cs-surface);
+}
+
+details summary {
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: var(--cs-navy);
+  cursor: pointer;
+}
+
+details[open] summary {
+  border-bottom: 1px solid var(--cs-border);
+}
+
+details fieldset {
+  border: none;
+  margin: 0;
+}
