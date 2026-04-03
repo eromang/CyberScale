@@ -6,11 +6,48 @@
   <div class="cs-profile-icon">{{ entity.organisation_name|truncatechars:1 }}</div>
   <div class="cs-profile-info">
     <h3>{{ entity.organisation_name }}</h3>
-    <p>{{ entity.sector|title }} / {{ entity.entity_type }} — {{ entity.ms_established }}</p>
+    <p>{{ entity.ms_established }}</p>
   </div>
 </div>
 
-<a href="{% url 'assessment_form' %}" role="button">New Incident Assessment</a>
+<div class="cs-card">
+  <h3>Registered Entity Types</h3>
+  <div id="entity-types-list">
+    {% include "entity/partials/entity_types.html" with entity_types=entity.entity_types.all %}
+  </div>
+
+  <details style="margin-top: 0.75rem;">
+    <summary style="font-size: 0.85rem;">Add entity type</summary>
+    <form method="post" action="{% url 'add_entity_type' %}"
+          hx-post="{% url 'add_entity_type' %}"
+          hx-target="#entity-types-list"
+          hx-swap="innerHTML"
+          style="margin-top: 0.5rem;">
+      {% csrf_token %}
+      <div class="grid">
+        <label>Sector
+          <select name="sector" id="add_sector"
+                  hx-get="{% url 'htmx_entity_types' %}"
+                  hx-target="#add_entity_type"
+                  hx-trigger="change"
+                  hx-swap="innerHTML">
+            {% for value, label in sector_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Entity type
+          <select name="entity_type" id="add_entity_type">
+            <option value="">— Select sector first —</option>
+          </select>
+        </label>
+        <label>&nbsp;<button type="submit" style="margin-top: 0;">Add</button></label>
+      </div>
+    </form>
+  </details>
+</div>
+
+<a href="{% url 'assessment_form' %}" role="button" style="margin-top: 1rem; display: inline-block;">New Incident Assessment</a>
 
 {% if assessments %}
 <div class="cs-card" style="margin-top: 1.5rem;">
@@ -23,7 +60,7 @@
           <th>Date</th>
           <th>Description</th>
           <th>Status</th>
-          <th>Model</th>
+          <th>Types</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -45,10 +82,10 @@
             {% endif %}
           </td>
           <td>
-            {% if a.status == "draft" %}
-              <span style="color: var(--cs-text-muted);">—</span>
+            {% if a.affected_entity_types %}
+              <small>{{ a.affected_entity_types|length }} type{{ a.affected_entity_types|length|pluralize }}</small>
             {% else %}
-              <span class="badge badge-model">{{ a.result_model }}</span>
+              <small>{{ a.sector }}/{{ a.entity_type }}</small>
             {% endif %}
           </td>
           <td>
