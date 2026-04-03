@@ -10,8 +10,7 @@
 <ul class="cs-steps">
   <li class="cs-step active"><span class="cs-step-num">1</span> Context</li>
   <li class="cs-step active"><span class="cs-step-num">2</span> Impact</li>
-  <li class="cs-step active"><span class="cs-step-num">3</span> Sector</li>
-  <li class="cs-step"><span class="cs-step-num">4</span> Result</li>
+  <li class="cs-step"><span class="cs-step-num">3</span> Result</li>
 </ul>
 
 <form method="post">
@@ -33,43 +32,25 @@
       </p>
     {% else %}
       <div id="entity-type-checkboxes"
-           hx-get="{% url 'htmx_sector_fields' %}"
-           hx-target="#sector-specific-fields"
+           hx-get="{% url 'htmx_impact_fields' %}"
+           hx-target="#per-type-impacts"
            hx-trigger="change"
-           hx-include="[name='affected_entity_types']"
-           hx-vals='js:{"sectors": Array.from(document.querySelectorAll("[name=affected_entity_types]:checked")).map(e => e.value.split(":")[0]).join(",")}'>
+           hx-vals='js:{"types": Array.from(document.querySelectorAll("[name=affected_entity_types]:checked")).map(e => e.value).join(",")}'>
         {{ form1.affected_entity_types }}
       </div>
     {% endif %}
     {% if form1.affected_entity_types.errors %}<small style="color: var(--cs-significant);">{{ form1.affected_entity_types.errors.0 }}</small>{% endif %}
 
-    <label>Member states affected
-      {{ form1.ms_affected }}
-    </label>
-  </fieldset>
-
-  <fieldset>
-    <legend>Step 2 — Impact Assessment</legend>
     <div class="grid">
-      <label>Service impact {{ form2.service_impact }}</label>
-      <label>Data impact {{ form2.data_impact }}</label>
-    </div>
-    <div class="grid">
-      <label>Safety impact {{ form2.safety_impact }}</label>
-      <label>Financial impact {{ form2.financial_impact }}</label>
-    </div>
-    <div class="grid">
-      <label>Affected persons count {{ form2.affected_persons_count }}</label>
-      <label>Impact duration (hours) {{ form2.impact_duration_hours }}</label>
-    </div>
-    <div class="grid">
-      <label>{{ form2.suspected_malicious }} Suspected malicious</label>
-      <label>{{ form2.physical_access_breach }} Physical access breach (IR only)</label>
+      <label>{{ form1.suspected_malicious }} Suspected malicious</label>
+      <label>{{ form1.physical_access_breach }} Physical access breach (IR only)</label>
     </div>
   </fieldset>
 
-  <div id="sector-specific-fields">
-    {# Populated by HTMX when entity type checkboxes change #}
+  <div id="per-type-impacts">
+    {% if registered_types|length == 1 %}
+      {% include "entity/partials/impact_fields.html" with types=registered_types_dicts %}
+    {% endif %}
   </div>
 
   <div class="cs-actions">
