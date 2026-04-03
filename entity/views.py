@@ -2,7 +2,7 @@
 
 import json
 
-from django.contrib.auth import login
+from django.contrib.auth import login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -54,6 +54,11 @@ def login_view(request):
     else:
         form = AuthenticationForm()
     return render(request, "entity/login.html", {"form": form})
+
+
+def logout_view(request):
+    auth_logout(request)
+    return redirect("login")
 
 
 @login_required
