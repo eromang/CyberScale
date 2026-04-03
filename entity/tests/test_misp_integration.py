@@ -19,8 +19,10 @@ from entity.models import Assessment, Entity, EntityType
 MISP_URL = os.environ.get("MISP_URL", "")
 MISP_API_KEY = os.environ.get("MISP_API_KEY", "")
 
+_PLACEHOLDER_KEYS = {"changeme-run-misp-authkey-setup", "cyberscale-misp-test-api-key", ""}
+
 requires_misp = pytest.mark.skipif(
-    not MISP_URL or not MISP_API_KEY or MISP_API_KEY == "changeme-run-misp-authkey-setup",
+    not MISP_URL or MISP_API_KEY in _PLACEHOLDER_KEYS,
     reason="MISP_URL and MISP_API_KEY not set (or placeholder key)",
 )
 
