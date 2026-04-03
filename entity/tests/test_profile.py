@@ -3,7 +3,7 @@
 import ipaddress
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import Client, TestCase
 
 from entity.forms import EntityProfileForm
 from entity.models import Entity
@@ -98,3 +98,49 @@ class EntityProfileFormTest(TestCase):
         assert entity.organisation_name == "Updated Corp"
         assert entity.address == "1 Rue NIS2"
         assert entity.technical_contact_name == "Bob"
+
+
+class ProfileEditViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("edituser", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user,
+            organisation_name="Edit Corp",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+        self.client = Client()
+        self.client.login(username="edituser", password="testpass123")
+
+    def test_profile_edit_loads(self):
+        resp = self.client.get("/profile/edit/")
+        assert resp.status_code == 200
+        assert b"Edit Corp" in resp.content
+        assert b"Organisation" in resp.content
+
+    def test_profile_edit_requires_login(self):
+        c = Client()
+        resp = c.get("/profile/edit/")
+        assert resp.status_code == 302
+        assert "/login/" in resp.url
+
+    def test_profile_edit_saves(self):
+        resp = self.client.post("/profile/edit/", {
+            "organisation_name": "Updated Corp",
+            "address": "1 Rue NIS2",
+            "contact_email": "sec@corp.lu",
+            "ip_ranges": "10.0.0.0/8",
+            "ms_services": ["LU", "BE"],
+            "misp_default_tlp": "tlp:amber",
+        })
+        assert resp.status_code == 302
+        self.entity.refresh_from_db()
+        assert self.entity.organisation_name == "Updated Corp"
+        assert self.entity.address == "1 Rue NIS2"
+        assert self.entity.ip_ranges == ["10.0.0.0/8"]
+        assert self.entity.ms_services == ["LU", "BE"]
+
+    def test_dashboard_has_edit_profile_link(self):
+        resp = self.client.get("/")
+        assert b"/profile/edit/" in resp.content

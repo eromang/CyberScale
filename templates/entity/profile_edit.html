@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — CyberScale{% endblock %}
+
+{% block content %}
+<div class="cs-page-header">
+  <h2>Edit Entity Profile</h2>
+  <p>{{ entity.organisation_name }} — MS established: {{ entity.ms_established }}</p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  {% if form.errors %}
+    <div class="cs-card" style="border-left: 3px solid var(--cs-significant);">
+      <p><strong>Please correct the errors below:</strong></p>
+      {{ form.errors }}
+    </div>
+  {% endif %}
+
+  <fieldset>
+    <legend>Organisation</legend>
+    <label>Organisation name {{ form.organisation_name }}</label>
+    <label>Address {{ form.address }}</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>General Contact</legend>
+    <div class="grid">
+      <label>Email {{ form.contact_email }}</label>
+      <label>Phone {{ form.contact_phone }}</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Responsible Person</legend>
+    <div class="grid">
+      <label>Name {{ form.responsible_person_name }}</label>
+      <label>Email {{ form.responsible_person_email }}</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Technical Contact</legend>
+    <div class="grid">
+      <label>Name {{ form.technical_contact_name }}</label>
+      <label>Email {{ form.technical_contact_email }}</label>
+    </div>
+    <label>Phone {{ form.technical_contact_phone }}</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Service Provision</legend>
+    <label>Member states where services are provided</label>
+    <div class="cs-checkbox-grid">
+      {{ form.ms_services }}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>IP Ranges</legend>
+    <label>IP address ranges (CIDR notation, one per line) {{ form.ip_ranges }}</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>MISP Settings</legend>
+    <label>MISP instance URL {{ form.misp_instance_url }}</label>
+    <label>API key {{ form.misp_api_key }}</label>
+    <label>Default TLP {{ form.misp_default_tlp }}</label>
+  </fieldset>
+
+  <div class="cs-actions">
+    <button type="submit">Save Profile</button>
+    <a href="{% url 'dashboard' %}" role="button" class="outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}
