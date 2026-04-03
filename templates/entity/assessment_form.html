@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}New Assessment — CyberScale{% endblock %}
+{% block title %}{% if draft %}Resume Draft #{{ draft.pk }}{% else %}New Assessment{% endif %} — CyberScale{% endblock %}
 
 {% block content %}
 <div class="cs-page-header">
-  <h2>Incident Assessment</h2>
+  <h2>{% if draft %}Resume Draft #{{ draft.pk }}{% else %}Incident Assessment{% endif %}</h2>
   <p>{{ entity.organisation_name }} — {{ entity.sector|title }} / {{ entity.entity_type }} ({{ entity.ms_established }})</p>
 </div>
 
@@ -76,6 +76,9 @@
     </fieldset>
   </details>
 
-  <button type="submit">Run Assessment</button>
+  <div class="cs-actions">
+    <button type="submit" name="run_assessment">Run Assessment</button>
+    <button type="submit" name="save_draft" class="secondary">Save Draft</button>
+  </div>
 </form>
 {% endblock %}
