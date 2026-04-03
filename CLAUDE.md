@@ -42,6 +42,12 @@ poetry run python evaluation/e2e_v8_demo.py              # HCPN scenarios
 poetry run cyberscale
 ```
 
+## Docker
+
+Claude manages Docker fully — build, up, down, exec, logs, troubleshooting. The user does not run Docker commands.
+
+See `docs/docker-playground.md` for architecture and `docs/product-specification.md` for full product spec.
+
 ## Conventions
 
 - National modules: `src/cyberscale/national/{ms}.py` + `data/reference/{ms}_thresholds.json` + registry entry
