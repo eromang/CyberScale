@@ -2,21 +2,24 @@
 
 import json
 
+from django.contrib import messages
 from django.contrib.auth import login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from .assessment import run_entity_assessment
+from .assessment import run_entity_assessment, run_multi_entity_assessment
 from .forms import (
     AssessmentStep1Form,
     AssessmentStep2Form,
     AssessmentStep3Form,
     RegistrationForm,
+    SECTORS_WITH_SPECIFIC_FIELDS,
     _entity_types_by_sector,
 )
-from .models import Assessment, Entity, Submission
+from .models import Assessment, Entity, EntityType, Submission
 
 
 def _get_entity_or_redirect(request):
@@ -32,12 +35,17 @@ def register_view(request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            Entity.objects.create(
+            entity = Entity.objects.create(
                 user=user,
                 organisation_name=form.cleaned_data["organisation_name"],
                 sector=form.cleaned_data["sector"],
                 entity_type=form.cleaned_data["entity_type"],
                 ms_established=form.cleaned_data["ms_established"],
+            )
+            EntityType.objects.create(
+                entity=entity,
+                sector=form.cleaned_data["sector"],
+                entity_type=form.cleaned_data["entity_type"],
             )
             login(request, user)
             return redirect("dashboard")
@@ -75,9 +83,11 @@ def dashboard_view(request):
     if entity is None:
         return redirect("register")
     assessments = entity.assessments.all()[:20]
+    from .forms import _sector_choices
     return render(request, "entity/dashboard.html", {
         "entity": entity,
         "assessments": assessments,
+        "sector_choices": _sector_choices(),
     })
 
 
@@ -87,29 +97,37 @@ def assessment_form_view(request, draft_pk=None):
     if entity is None:
         return redirect("register")
 
-    # Load existing draft if resuming
+    registered_types = list(entity.entity_types.all())
+
     draft = None
     if draft_pk:
         draft = get_object_or_404(Assessment, pk=draft_pk, entity=entity, status="draft")
 
     if request.method == "POST":
-        form1 = AssessmentStep1Form(request.POST)
+        form1 = AssessmentStep1Form(request.POST, entity_types=registered_types)
         form2 = AssessmentStep2Form(request.POST)
         form3 = AssessmentStep3Form(request.POST)
 
-        # Check which button was clicked
         is_draft = "save_draft" in request.POST
 
         if form1.is_valid() and form2.is_valid() and form3.is_valid():
             sector_specific = form3.get_sector_specific()
             ms_affected = form1.cleaned_data.get("ms_affected", [])
 
-            # Common fields for both draft and completed
+            # Parse selected entity types
+            selected_types = []
+            for val in form1.cleaned_data["affected_entity_types"]:
+                sector, etype = val.split(":", 1)
+                selected_types.append({"sector": sector, "entity_type": etype})
+
+            primary = selected_types[0]
+
             fields = dict(
                 description=form1.cleaned_data["description"],
-                sector=entity.sector,
-                entity_type=entity.entity_type,
+                sector=primary["sector"],
+                entity_type=primary["entity_type"],
                 ms_affected=ms_affected,
+                affected_entity_types=selected_types,
                 service_impact=form2.cleaned_data["service_impact"],
                 data_impact=form2.cleaned_data["data_impact"],
                 safety_impact=form2.cleaned_data["safety_impact"],
@@ -122,7 +140,6 @@ def assessment_form_view(request, draft_pk=None):
             )
 
             if is_draft:
-                # Save as draft — no engine run
                 if draft:
                     for k, v in fields.items():
                         setattr(draft, k, v)
@@ -132,15 +149,12 @@ def assessment_form_view(request, draft_pk=None):
                     assessment = Assessment.objects.create(
                         entity=entity, status="draft", **fields,
                     )
-                from django.contrib import messages
                 messages.success(request, f"Draft #{assessment.pk} saved.")
                 return redirect("dashboard")
             else:
-                # Run assessment engine
-                result = run_entity_assessment(
+                multi_result = run_multi_entity_assessment(
                     description=fields["description"],
-                    sector=entity.sector,
-                    entity_type=entity.entity_type,
+                    affected_entity_types=selected_types,
                     ms_established=entity.ms_established,
                     ms_affected=ms_affected or None,
                     service_impact=fields["service_impact"],
@@ -153,28 +167,17 @@ def assessment_form_view(request, draft_pk=None):
                     sector_specific=sector_specific or None,
                 )
 
-                sig_data = result.get("significance", {})
-                significant = sig_data.get("significant_incident")
-                if isinstance(significant, str):
-                    sig_label = significant.upper()
-                    sig_bool = significant == "likely"
-                elif isinstance(significant, bool):
-                    sig_label = "SIGNIFICANT" if significant else "NOT SIGNIFICANT"
-                    sig_bool = significant
-                else:
-                    sig_label = "UNDETERMINED"
-                    sig_bool = None
-
                 result_fields = dict(
                     status="completed",
-                    result_significance=sig_bool,
-                    result_significance_label=sig_label,
-                    result_model=result.get("model", ""),
-                    result_criteria=sig_data.get("triggered_criteria", []),
-                    result_framework=result.get("framework", ""),
-                    result_competent_authority=result.get("competent_authority", ""),
-                    result_early_warning=result.get("early_warning", {}),
-                    result_raw=result,
+                    assessment_results=multi_result["per_type_results"],
+                    result_significance=multi_result["overall_significance"],
+                    result_significance_label=multi_result["overall_significance_label"],
+                    result_early_warning=multi_result["overall_early_warning"],
+                    result_model=multi_result["per_type_results"][0]["model"] if multi_result["per_type_results"] else "",
+                    result_criteria=multi_result["per_type_results"][0]["triggered_criteria"] if multi_result["per_type_results"] else [],
+                    result_framework=multi_result["per_type_results"][0]["framework"] if multi_result["per_type_results"] else "",
+                    result_competent_authority=multi_result["per_type_results"][0]["competent_authority"] if multi_result["per_type_results"] else "",
+                    result_raw=multi_result,
                 )
 
                 if draft:
@@ -188,12 +191,19 @@ def assessment_form_view(request, draft_pk=None):
                     )
                     return redirect("assessment_result", pk=assessment.pk)
     else:
-        # Pre-populate forms from draft if resuming
         if draft:
-            form1 = AssessmentStep1Form(initial={
-                "description": draft.description,
-                "ms_affected": draft.ms_affected,
-            })
+            initial_types = [
+                f"{t['sector']}:{t['entity_type']}"
+                for t in (draft.affected_entity_types or [])
+            ]
+            form1 = AssessmentStep1Form(
+                entity_types=registered_types,
+                initial={
+                    "description": draft.description,
+                    "affected_entity_types": initial_types,
+                    "ms_affected": draft.ms_affected,
+                },
+            )
             form2 = AssessmentStep2Form(initial={
                 "service_impact": draft.service_impact,
                 "data_impact": draft.data_impact,
@@ -206,7 +216,7 @@ def assessment_form_view(request, draft_pk=None):
             })
             form3 = AssessmentStep3Form(initial=draft.sector_specific)
         else:
-            form1 = AssessmentStep1Form()
+            form1 = AssessmentStep1Form(entity_types=registered_types)
             form2 = AssessmentStep2Form()
             form3 = AssessmentStep3Form()
 
@@ -216,6 +226,7 @@ def assessment_form_view(request, draft_pk=None):
         "form2": form2,
         "form3": form3,
         "draft": draft,
+        "registered_types": registered_types,
     })
 
 
@@ -310,3 +321,48 @@ def entity_types_for_sector(request):
     for et in types:
         html += f'<option value="{et["id"]}">{et["label"]}</option>'
     return HttpResponse(html)
+
+
+@login_required
+@require_POST
+def add_entity_type_view(request):
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
+    sector = request.POST.get("sector", "")
+    etype = request.POST.get("entity_type", "")
+    if sector and etype:
+        EntityType.objects.get_or_create(
+            entity=entity, entity_type=etype, defaults={"sector": sector}
+        )
+    if request.headers.get("HX-Request"):
+        types = entity.entity_types.all()
+        return render(request, "entity/partials/entity_types.html", {"entity_types": types})
+    return redirect("dashboard")
+
+
+@login_required
+@require_POST
+def remove_entity_type_view(request, pk):
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
+    et = get_object_or_404(EntityType, pk=pk, entity=entity)
+    if entity.entity_types.count() > 1:
+        et.delete()
+    else:
+        messages.error(request, "Cannot remove the last entity type.")
+    if request.headers.get("HX-Request"):
+        types = entity.entity_types.all()
+        return render(request, "entity/partials/entity_types.html", {"entity_types": types})
+    return redirect("dashboard")
+
+
+def sector_fields_view(request):
+    """HTMX endpoint: return sector-specific fields for selected entity types."""
+    sectors_param = request.GET.get("sectors", "")
+    selected_sectors = set(sectors_param.split(",")) if sectors_param else set()
+    relevant = selected_sectors & SECTORS_WITH_SPECIFIC_FIELDS
+    if not relevant:
+        return HttpResponse("")
+    return render(request, "entity/partials/sector_fields.html", {"sectors": relevant})
