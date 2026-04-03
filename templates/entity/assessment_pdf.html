@@ -52,19 +52,37 @@
   <div class="sig-box sig-undetermined"><span class="sig-label">{{ assessment.result_significance_label|default:"UNDETERMINED" }}</span></div>
 {% endif %}
 
-<table>
-  {% if assessment.result_framework %}<tr><th>Framework</th><td>{{ assessment.result_framework }}</td></tr>{% endif %}
-  {% if assessment.result_competent_authority %}<tr><th>Competent authority</th><td>{{ assessment.result_competent_authority }}</td></tr>{% endif %}
-  <tr><th>Assessment model</th><td>{{ assessment.result_model }}</td></tr>
-</table>
+{% if assessment.assessment_results %}
+  <p style="color: #6c757d; font-size: 10pt;">Overall determination across {{ assessment.assessment_results|length }} entity type{{ assessment.assessment_results|length|pluralize }}</p>
 
-{% if assessment.result_criteria %}
-<h2>Triggered Criteria</h2>
-<ul class="criteria-list">
-  {% for criterion in assessment.result_criteria %}
-    <li>{{ criterion }}</li>
+  {% for r in assessment.assessment_results %}
+  <h2>{{ r.sector|default:""|title }} / {{ r.entity_type|default:"" }}</h2>
+  <table>
+    <tr><th>Significance</th><td>{{ r.significance_label }}</td></tr>
+    <tr><th>Model</th><td>{{ r.model }}</td></tr>
+    {% if r.framework %}<tr><th>Framework</th><td>{{ r.framework }}</td></tr>{% endif %}
+    {% if r.competent_authority %}<tr><th>Competent authority</th><td>{{ r.competent_authority }}</td></tr>{% endif %}
+  </table>
+  {% if r.triggered_criteria %}
+  <ul class="criteria-list">
+    {% for c in r.triggered_criteria %}<li>{{ c }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if r.early_warning.recommended %}
+    <p class="ew-recommended">Early warning recommended — {{ r.early_warning.deadline }}</p>
+  {% endif %}
   {% endfor %}
-</ul>
+{% else %}
+  <table>
+    {% if assessment.result_framework %}<tr><th>Framework</th><td>{{ assessment.result_framework }}</td></tr>{% endif %}
+    {% if assessment.result_competent_authority %}<tr><th>Competent authority</th><td>{{ assessment.result_competent_authority }}</td></tr>{% endif %}
+    <tr><th>Assessment model</th><td>{{ assessment.result_model }}</td></tr>
+  </table>
+  {% if assessment.result_criteria %}
+  <ul class="criteria-list">
+    {% for criterion in assessment.result_criteria %}<li>{{ criterion }}</li>{% endfor %}
+  </ul>
+  {% endif %}
 {% endif %}
 
 <h2>Early Warning</h2>

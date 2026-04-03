@@ -3,7 +3,14 @@ import csv
 from django.contrib import admin
 from django.http import HttpResponse
 
-from .models import Assessment, Entity, Submission
+from .models import Assessment, Entity, EntityType, Submission
+
+
+class EntityTypeInline(admin.TabularInline):
+    model = EntityType
+    fields = ("sector", "entity_type", "added_at")
+    readonly_fields = ("added_at",)
+    extra = 1
 
 
 class AssessmentInline(admin.TabularInline):
@@ -22,12 +29,19 @@ class AssessmentInline(admin.TabularInline):
         return False
 
 
+@admin.register(EntityType)
+class EntityTypeAdmin(admin.ModelAdmin):
+    list_display = ("entity", "sector", "entity_type", "added_at")
+    list_filter = ("sector",)
+    search_fields = ("entity__organisation_name", "entity_type")
+
+
 @admin.register(Entity)
 class EntityAdmin(admin.ModelAdmin):
-    list_display = ("organisation_name", "sector", "entity_type", "ms_established", "competent_authority")
-    list_filter = ("sector", "ms_established")
+    list_display = ("organisation_name", "ms_established", "competent_authority")
+    list_filter = ("ms_established",)
     search_fields = ("organisation_name", "user__username")
-    inlines = [AssessmentInline]
+    inlines = [EntityTypeInline, AssessmentInline]
 
 
 def export_assessments_csv(modeladmin, request, queryset):
