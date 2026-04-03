@@ -63,7 +63,10 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    entity = get_object_or_404(Entity, user=request.user)
+    try:
+        entity = Entity.objects.get(user=request.user)
+    except Entity.DoesNotExist:
+        return redirect("register")
     assessments = entity.assessments.all()[:20]
     return render(request, "entity/dashboard.html", {
         "entity": entity,
