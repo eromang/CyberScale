@@ -110,7 +110,7 @@ class RegistrationForm(UserCreationForm):
 
 
 class AssessmentStep1Form(forms.Form):
-    """Step 1 — Incident context."""
+    """Step 1 — Incident context (global fields)."""
 
     description = forms.CharField(
         widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Describe the incident..."}),
@@ -120,12 +120,8 @@ class AssessmentStep1Form(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         help_text="Select all entity types affected by this incident.",
     )
-    ms_affected = forms.MultipleChoiceField(
-        choices=MS_CHOICES[1:],
-        required=False,
-        widget=forms.SelectMultiple(attrs={"size": 6}),
-        help_text="Select all affected member states (Ctrl+click for multiple).",
-    )
+    suspected_malicious = forms.BooleanField(required=False, label="Suspected malicious")
+    physical_access_breach = forms.BooleanField(required=False, label="Physical access breach (IR only)")
 
     def __init__(self, *args, entity_types=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -137,7 +133,6 @@ class AssessmentStep1Form(forms.Form):
                 )
                 for et in entity_types
             ]
-            # Auto-select if only one
             if len(entity_types) == 1:
                 et = entity_types[0]
                 self.fields["affected_entity_types"].initial = [
