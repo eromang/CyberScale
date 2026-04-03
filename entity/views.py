@@ -19,6 +19,14 @@ from .forms import (
 from .models import Assessment, Entity, Submission
 
 
+def _get_entity_or_redirect(request):
+    """Get the Entity for the current user, or None if not registered."""
+    try:
+        return Entity.objects.get(user=request.user)
+    except Entity.DoesNotExist:
+        return None
+
+
 def register_view(request):
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -63,9 +71,8 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    try:
-        entity = Entity.objects.get(user=request.user)
-    except Entity.DoesNotExist:
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
         return redirect("register")
     assessments = entity.assessments.all()[:20]
     return render(request, "entity/dashboard.html", {
@@ -76,7 +83,9 @@ def dashboard_view(request):
 
 @login_required
 def assessment_form_view(request, draft_pk=None):
-    entity = get_object_or_404(Entity, user=request.user)
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
 
     # Load existing draft if resuming
     draft = None
@@ -212,7 +221,9 @@ def assessment_form_view(request, draft_pk=None):
 
 @login_required
 def delete_draft_view(request, pk):
-    entity = get_object_or_404(Entity, user=request.user)
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
     draft = get_object_or_404(Assessment, pk=pk, entity=entity, status="draft")
     if request.method == "POST":
         draft.delete()
@@ -223,7 +234,9 @@ def delete_draft_view(request, pk):
 
 @login_required
 def assessment_result_view(request, pk):
-    entity = get_object_or_404(Entity, user=request.user)
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
     return render(request, "entity/assessment_result.html", {
         "entity": entity,
@@ -233,7 +246,9 @@ def assessment_result_view(request, pk):
 
 @login_required
 def assessment_pdf_view(request, pk):
-    entity = get_object_or_404(Entity, user=request.user)
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
 
     from django.template.loader import render_to_string
@@ -259,7 +274,9 @@ def assessment_pdf_view(request, pk):
 
 @login_required
 def assessment_misp_json_view(request, pk):
-    entity = get_object_or_404(Entity, user=request.user)
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
 
     from .misp_export import build_misp_event
