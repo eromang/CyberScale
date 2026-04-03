@@ -47,6 +47,19 @@ def _entity_types_by_sector() -> dict[str, list[dict]]:
     return by_sector
 
 
+# Mapping of sectors that have sector-specific fields (LU thresholds)
+SECTORS_WITH_SPECIFIC_FIELDS = {"energy", "transport", "health"}
+
+
+def entity_type_label(entity_type_id: str) -> str:
+    """Get human-readable label for an entity type ID."""
+    data = _load_entity_type_data()
+    for et in data:
+        if et["id"] == entity_type_id:
+            return et["label"]
+    return entity_type_id.replace("_", " ").title()
+
+
 MS_CHOICES = [
     ("", "— Select member state —"),
     ("AT", "Austria"), ("BE", "Belgium"), ("BG", "Bulgaria"),
@@ -102,12 +115,34 @@ class AssessmentStep1Form(forms.Form):
     description = forms.CharField(
         widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Describe the incident..."}),
     )
+    affected_entity_types = forms.MultipleChoiceField(
+        choices=[],
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select all entity types affected by this incident.",
+    )
     ms_affected = forms.MultipleChoiceField(
-        choices=MS_CHOICES[1:],  # without blank
+        choices=MS_CHOICES[1:],
         required=False,
         widget=forms.SelectMultiple(attrs={"size": 6}),
         help_text="Select all affected member states (Ctrl+click for multiple).",
     )
+
+    def __init__(self, *args, entity_types=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if entity_types:
+            self.fields["affected_entity_types"].choices = [
+                (
+                    f"{et.sector}:{et.entity_type}",
+                    f"{et.sector_label} / {et.label}",
+                )
+                for et in entity_types
+            ]
+            # Auto-select if only one
+            if len(entity_types) == 1:
+                et = entity_types[0]
+                self.fields["affected_entity_types"].initial = [
+                    f"{et.sector}:{et.entity_type}"
+                ]
 
 
 class AssessmentStep2Form(forms.Form):
