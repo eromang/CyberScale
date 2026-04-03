@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Register — CyberScale{% endblock %}
+
+{% block content %}
+<div class="cs-auth-card" style="max-width: 600px;">
+  <article class="cs-card">
+    <h3>Entity Registration</h3>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <fieldset>
+        <legend>Account</legend>
+        <label>Username {{ form.username }}</label>
+        {% if form.username.errors %}<small style="color: var(--cs-significant);">{{ form.username.errors.0 }}</small>{% endif %}
+        <label>Password {{ form.password1 }}</label>
+        {% if form.password1.errors %}<small style="color: var(--cs-significant);">{{ form.password1.errors.0 }}</small>{% endif %}
+        <label>Confirm password {{ form.password2 }}</label>
+        {% if form.password2.errors %}<small style="color: var(--cs-significant);">{{ form.password2.errors.0 }}</small>{% endif %}
+      </fieldset>
+
+      <fieldset>
+        <legend>Entity Profile</legend>
+        <label>Organisation name {{ form.organisation_name }}</label>
+        {% if form.organisation_name.errors %}<small style="color: var(--cs-significant);">{{ form.organisation_name.errors.0 }}</small>{% endif %}
+
+        <label>Sector
+          <select name="sector" id="id_sector"
+                  hx-get="{% url 'htmx_entity_types' %}"
+                  hx-target="#id_entity_type"
+                  hx-trigger="change"
+                  hx-swap="innerHTML">
+            {% for value, label in form.sector.field.choices %}
+              <option value="{{ value }}" {% if value == form.sector.value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% if form.sector.errors %}<small style="color: var(--cs-significant);">{{ form.sector.errors.0 }}</small>{% endif %}
+
+        <label>Entity type
+          <select name="entity_type" id="id_entity_type">
+            <option value="">— Select sector first —</option>
+          </select>
+        </label>
+        {% if form.entity_type.errors %}<small style="color: var(--cs-significant);">{{ form.entity_type.errors.0 }}</small>{% endif %}
+
+        <label>Member state established {{ form.ms_established }}</label>
+        {% if form.ms_established.errors %}<small style="color: var(--cs-significant);">{{ form.ms_established.errors.0 }}</small>{% endif %}
+      </fieldset>
+
+      <button type="submit">Register</button>
+    </form>
+
+    <p><small>Already have an account? <a href="{% url 'login' %}">Login</a></small></p>
+  </article>
+</div>
+{% endblock %}

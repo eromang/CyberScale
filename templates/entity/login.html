@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Login — CyberScale{% endblock %}
+
+{% block content %}
+<div class="cs-auth-card">
+  <article class="cs-card">
+    <h3>Login</h3>
+
+    <form method="post">
+      {% csrf_token %}
+
+      {% if form.errors %}
+        <p style="color: var(--cs-significant);">Invalid username or password.</p>
+      {% endif %}
+
+      <label>Username {{ form.username }}</label>
+      <label>Password {{ form.password }}</label>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <p><small>No account? <a href="{% url 'register' %}">Register your entity</a></small></p>
+  </article>
+</div>
+{% endblock %}
