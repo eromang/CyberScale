@@ -377,11 +377,27 @@ def remove_entity_type_view(request, pk):
     return redirect("dashboard")
 
 
-def sector_fields_view(request):
-    """HTMX endpoint: return sector-specific fields for selected entity types."""
-    sectors_param = request.GET.get("sectors", "")
-    selected_sectors = set(sectors_param.split(",")) if sectors_param else set()
-    relevant = selected_sectors & SECTORS_WITH_SPECIFIC_FIELDS
-    if not relevant:
+def impact_fields_view(request):
+    """HTMX endpoint: return per-type impact fieldsets for selected entity types."""
+    types_param = request.GET.get("types", "")
+    if not types_param:
         return HttpResponse("")
-    return render(request, "entity/partials/sector_fields.html", {"sectors": relevant})
+
+    from .forms import entity_type_label
+
+    types = []
+    for val in types_param.split(","):
+        if ":" not in val:
+            continue
+        sector, etype = val.split(":", 1)
+        types.append({
+            "sector": sector,
+            "entity_type": etype,
+            "sector_label": sector.replace("_", " ").title(),
+            "label": entity_type_label(etype),
+        })
+
+    if not types:
+        return HttpResponse("")
+
+    return render(request, "entity/partials/impact_fields.html", {"types": types})

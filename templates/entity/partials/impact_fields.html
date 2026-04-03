@@ -1,0 +1,96 @@
+{% for type_info in types %}
+<fieldset>
+  <legend>Impact — {{ type_info.sector_label }} / {{ type_info.label }}</legend>
+  <input type="hidden" name="impact_{{ forloop.counter0 }}_type" value="{{ type_info.sector }}:{{ type_info.entity_type }}">
+
+  <label>Member states affected
+    <select name="impact_{{ forloop.counter0 }}_ms_affected" multiple size="4">
+      <option value="AT">Austria</option><option value="BE">Belgium</option>
+      <option value="BG">Bulgaria</option><option value="CY">Cyprus</option>
+      <option value="CZ">Czechia</option><option value="DE">Germany</option>
+      <option value="DK">Denmark</option><option value="EE">Estonia</option>
+      <option value="ES">Spain</option><option value="FI">Finland</option>
+      <option value="FR">France</option><option value="GR">Greece</option>
+      <option value="HR">Croatia</option><option value="HU">Hungary</option>
+      <option value="IE">Ireland</option><option value="IT">Italy</option>
+      <option value="LT">Lithuania</option><option value="LU" selected>Luxembourg</option>
+      <option value="LV">Latvia</option><option value="MT">Malta</option>
+      <option value="NL">Netherlands</option><option value="PL">Poland</option>
+      <option value="PT">Portugal</option><option value="RO">Romania</option>
+      <option value="SE">Sweden</option><option value="SI">Slovenia</option>
+      <option value="SK">Slovakia</option>
+    </select>
+  </label>
+
+  <div class="grid">
+    <label>Service impact
+      <select name="impact_{{ forloop.counter0 }}_service_impact">
+        <option value="none">None</option><option value="partial">Partial degradation</option>
+        <option value="degraded">Degraded</option><option value="unavailable">Unavailable</option>
+        <option value="sustained">Sustained unavailability</option>
+      </select>
+    </label>
+    <label>Data impact
+      <select name="impact_{{ forloop.counter0 }}_data_impact">
+        <option value="none">None</option><option value="accessed">Accessed</option>
+        <option value="exfiltrated">Exfiltrated</option><option value="compromised">Compromised</option>
+        <option value="systemic">Systemic</option>
+      </select>
+    </label>
+  </div>
+  <div class="grid">
+    <label>Safety impact
+      <select name="impact_{{ forloop.counter0 }}_safety_impact">
+        <option value="none">None</option><option value="health_risk">Health risk</option>
+        <option value="health_damage">Health damage</option><option value="death">Death</option>
+      </select>
+    </label>
+    <label>Financial impact
+      <select name="impact_{{ forloop.counter0 }}_financial_impact">
+        <option value="none">None</option><option value="minor">Minor</option>
+        <option value="significant">Significant</option><option value="severe">Severe</option>
+      </select>
+    </label>
+  </div>
+  <div class="grid">
+    <label>Affected persons count <input type="number" name="impact_{{ forloop.counter0 }}_affected_persons_count" min="0" value="0"></label>
+    <label>Impact duration (hours) <input type="number" name="impact_{{ forloop.counter0 }}_impact_duration_hours" min="0" value="0"></label>
+  </div>
+
+  {% if type_info.sector == "energy" %}
+  <details open>
+    <summary style="font-size: 0.85rem;">Sector-specific: Electricity (LU)</summary>
+    <div class="grid">
+      <label>PODs affected <input type="number" name="impact_{{ forloop.counter0 }}_pods_affected" min="0" value=""></label>
+      <label>Voltage level
+        <select name="impact_{{ forloop.counter0 }}_voltage_level">
+          <option value="">—</option><option value="lv">Low voltage</option>
+          <option value="mv">Medium voltage</option><option value="hv_ehv">HV/EHV</option>
+        </select>
+      </label>
+      <label>SCADA unavailable (min) <input type="number" name="impact_{{ forloop.counter0 }}_scada_unavailable_min" min="0" value=""></label>
+    </div>
+  </details>
+  {% endif %}
+
+  {% if type_info.sector == "transport" %}
+  <details open>
+    <summary style="font-size: 0.85rem;">Sector-specific: Rail (LU)</summary>
+    <div class="grid">
+      <label>Trains cancelled % <input type="number" name="impact_{{ forloop.counter0 }}_trains_cancelled_pct" min="0" max="100" step="0.1" value=""></label>
+      <label>Slots impacted <input type="number" name="impact_{{ forloop.counter0 }}_slots_impacted" min="0" value=""></label>
+    </div>
+  </details>
+  {% endif %}
+
+  {% if type_info.sector == "health" %}
+  <details open>
+    <summary style="font-size: 0.85rem;">Sector-specific: Health (LU)</summary>
+    <div class="grid">
+      <label>Persons with health impact <input type="number" name="impact_{{ forloop.counter0 }}_persons_health_impact" min="0" value=""></label>
+      <label>Analyses affected % <input type="number" name="impact_{{ forloop.counter0 }}_analyses_affected_pct" min="0" max="100" step="0.1" value=""></label>
+    </div>
+  </details>
+  {% endif %}
+</fieldset>
+{% endfor %}

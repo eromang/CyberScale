@@ -14,7 +14,7 @@ urlpatterns = [
     path("assess/<int:pk>/pdf/", views.assessment_pdf_view, name="assessment_pdf"),
     path("assess/<int:pk>/misp-json/", views.assessment_misp_json_view, name="assessment_misp_json"),
     path("htmx/entity-types/", views.entity_types_for_sector, name="htmx_entity_types"),
-    path("htmx/sector-fields/", views.sector_fields_view, name="htmx_sector_fields"),
+    path("htmx/impact-fields/", views.impact_fields_view, name="htmx_impact_fields"),
     path("entity-type/add/", views.add_entity_type_view, name="add_entity_type"),
     path("entity-type/<int:pk>/remove/", views.remove_entity_type_view, name="remove_entity_type"),
 ]
