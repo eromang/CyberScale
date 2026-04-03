@@ -13,10 +13,9 @@ from django.views.decorators.http import require_POST
 from .assessment import run_entity_assessment, run_multi_entity_assessment
 from .forms import (
     AssessmentStep1Form,
-    AssessmentStep2Form,
-    AssessmentStep3Form,
     RegistrationForm,
     SECTORS_WITH_SPECIFIC_FIELDS,
+    entity_type_label,
     _entity_types_by_sector,
 )
 from .models import Assessment, Entity, EntityType, Submission
@@ -28,6 +27,49 @@ def _get_entity_or_redirect(request):
         return Entity.objects.get(user=request.user)
     except Entity.DoesNotExist:
         return None
+
+
+def _parse_per_type_impacts(post_data) -> list[dict]:
+    """Parse indexed per-type impact fields from POST data."""
+    impacts = []
+    idx = 0
+    while f"impact_{idx}_type" in post_data:
+        type_val = post_data.get(f"impact_{idx}_type", "")
+        if ":" not in type_val:
+            idx += 1
+            continue
+        sector, etype = type_val.split(":", 1)
+
+        sector_specific = {}
+        for ss_field in ("pods_affected", "voltage_level", "scada_unavailable_min",
+                         "trains_cancelled_pct", "slots_impacted",
+                         "persons_health_impact", "analyses_affected_pct"):
+            val = post_data.get(f"impact_{idx}_{ss_field}", "")
+            if val not in ("", None):
+                try:
+                    if ss_field in ("trains_cancelled_pct", "analyses_affected_pct"):
+                        sector_specific[ss_field] = float(val)
+                    elif ss_field == "voltage_level":
+                        sector_specific[ss_field] = val
+                    else:
+                        sector_specific[ss_field] = int(val)
+                except (ValueError, TypeError):
+                    pass
+
+        impacts.append({
+            "sector": sector,
+            "entity_type": etype,
+            "ms_affected": post_data.getlist(f"impact_{idx}_ms_affected"),
+            "service_impact": post_data.get(f"impact_{idx}_service_impact", "none"),
+            "data_impact": post_data.get(f"impact_{idx}_data_impact", "none"),
+            "safety_impact": post_data.get(f"impact_{idx}_safety_impact", "none"),
+            "financial_impact": post_data.get(f"impact_{idx}_financial_impact", "none"),
+            "affected_persons_count": int(post_data.get(f"impact_{idx}_affected_persons_count", 0) or 0),
+            "impact_duration_hours": int(post_data.get(f"impact_{idx}_impact_duration_hours", 0) or 0),
+            "sector_specific": sector_specific,
+        })
+        idx += 1
+    return impacts
 
 
 def register_view(request):
@@ -105,38 +147,39 @@ def assessment_form_view(request, draft_pk=None):
 
     if request.method == "POST":
         form1 = AssessmentStep1Form(request.POST, entity_types=registered_types)
-        form2 = AssessmentStep2Form(request.POST)
-        form3 = AssessmentStep3Form(request.POST)
-
         is_draft = "save_draft" in request.POST
 
-        if form1.is_valid() and form2.is_valid() and form3.is_valid():
-            sector_specific = form3.get_sector_specific()
-            ms_affected = form1.cleaned_data.get("ms_affected", [])
+        per_type_impacts = _parse_per_type_impacts(request.POST)
 
-            # Parse selected entity types
-            selected_types = []
-            for val in form1.cleaned_data["affected_entity_types"]:
-                sector, etype = val.split(":", 1)
-                selected_types.append({"sector": sector, "entity_type": etype})
-
+        if form1.is_valid() and per_type_impacts:
+            selected_types = [
+                {"sector": imp["sector"], "entity_type": imp["entity_type"]}
+                for imp in per_type_impacts
+            ]
             primary = selected_types[0]
+
+            severity_order = {"none": 0, "partial": 1, "degraded": 2, "unavailable": 3, "sustained": 4,
+                              "accessed": 1, "exfiltrated": 2, "compromised": 3, "systemic": 4,
+                              "health_risk": 1, "health_damage": 2, "death": 3,
+                              "minor": 1, "significant": 2, "severe": 3}
+            worst = max(per_type_impacts, key=lambda i: severity_order.get(i.get("service_impact", "none"), 0))
 
             fields = dict(
                 description=form1.cleaned_data["description"],
                 sector=primary["sector"],
                 entity_type=primary["entity_type"],
-                ms_affected=ms_affected,
                 affected_entity_types=selected_types,
-                service_impact=form2.cleaned_data["service_impact"],
-                data_impact=form2.cleaned_data["data_impact"],
-                safety_impact=form2.cleaned_data["safety_impact"],
-                financial_impact=form2.cleaned_data["financial_impact"],
-                affected_persons_count=form2.cleaned_data["affected_persons_count"],
-                impact_duration_hours=form2.cleaned_data["impact_duration_hours"],
-                suspected_malicious=form2.cleaned_data["suspected_malicious"],
-                physical_access_breach=form2.cleaned_data["physical_access_breach"],
-                sector_specific=sector_specific,
+                per_type_impacts=per_type_impacts,
+                ms_affected=worst.get("ms_affected", []),
+                service_impact=worst.get("service_impact", "none"),
+                data_impact=worst.get("data_impact", "none"),
+                safety_impact=worst.get("safety_impact", "none"),
+                financial_impact=worst.get("financial_impact", "none"),
+                affected_persons_count=worst.get("affected_persons_count", 0),
+                impact_duration_hours=worst.get("impact_duration_hours", 0),
+                suspected_malicious=form1.cleaned_data["suspected_malicious"],
+                physical_access_breach=form1.cleaned_data["physical_access_breach"],
+                sector_specific=worst.get("sector_specific", {}),
             )
 
             if is_draft:
@@ -154,17 +197,9 @@ def assessment_form_view(request, draft_pk=None):
             else:
                 multi_result = run_multi_entity_assessment(
                     description=fields["description"],
-                    affected_entity_types=selected_types,
+                    per_type_impacts=per_type_impacts,
                     ms_established=entity.ms_established,
-                    ms_affected=ms_affected or None,
-                    service_impact=fields["service_impact"],
-                    data_impact=fields["data_impact"],
-                    financial_impact=fields["financial_impact"],
-                    safety_impact=fields["safety_impact"],
-                    affected_persons_count=fields["affected_persons_count"],
                     suspected_malicious=fields["suspected_malicious"],
-                    impact_duration_hours=fields["impact_duration_hours"],
-                    sector_specific=sector_specific or None,
                 )
 
                 result_fields = dict(
@@ -190,43 +225,41 @@ def assessment_form_view(request, draft_pk=None):
                         entity=entity, **fields, **result_fields,
                     )
                     return redirect("assessment_result", pk=assessment.pk)
+        elif form1.is_valid() and not per_type_impacts:
+            messages.error(request, "Please fill in impact fields for at least one entity type.")
     else:
         if draft:
-            initial_types = [
-                f"{t['sector']}:{t['entity_type']}"
-                for t in (draft.affected_entity_types or [])
-            ]
             form1 = AssessmentStep1Form(
                 entity_types=registered_types,
                 initial={
                     "description": draft.description,
-                    "affected_entity_types": initial_types,
-                    "ms_affected": draft.ms_affected,
+                    "affected_entity_types": [
+                        f"{t['sector']}:{t['entity_type']}"
+                        for t in (draft.affected_entity_types or [])
+                    ],
+                    "suspected_malicious": draft.suspected_malicious,
+                    "physical_access_breach": draft.physical_access_breach,
                 },
             )
-            form2 = AssessmentStep2Form(initial={
-                "service_impact": draft.service_impact,
-                "data_impact": draft.data_impact,
-                "safety_impact": draft.safety_impact,
-                "financial_impact": draft.financial_impact,
-                "affected_persons_count": draft.affected_persons_count,
-                "impact_duration_hours": draft.impact_duration_hours,
-                "suspected_malicious": draft.suspected_malicious,
-                "physical_access_breach": draft.physical_access_breach,
-            })
-            form3 = AssessmentStep3Form(initial=draft.sector_specific)
         else:
             form1 = AssessmentStep1Form(entity_types=registered_types)
-            form2 = AssessmentStep2Form()
-            form3 = AssessmentStep3Form()
+
+    registered_types_dicts = [
+        {
+            "sector": et.sector,
+            "entity_type": et.entity_type,
+            "sector_label": et.sector_label,
+            "label": et.label,
+        }
+        for et in registered_types
+    ]
 
     return render(request, "entity/assessment_form.html", {
         "entity": entity,
         "form1": form1,
-        "form2": form2,
-        "form3": form3,
         "draft": draft,
         "registered_types": registered_types,
+        "registered_types_dicts": registered_types_dicts,
     })
 
 
