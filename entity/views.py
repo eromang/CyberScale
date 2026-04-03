@@ -290,12 +290,18 @@ def assessment_misp_json_view(request, pk):
         return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
 
-    from .misp_export import build_misp_event, build_misp_event_for_type
+    from .misp_export import build_misp_event, build_misp_event_for_type, build_misp_event_global
     import uuid as uuid_mod
+
+    # Ensure UUID exists
+    if not assessment.misp_event_uuid:
+        assessment.misp_event_uuid = str(uuid_mod.uuid4())
+        assessment.save(update_fields=["misp_event_uuid"])
 
     type_index = request.GET.get("type_index")
 
     if type_index is not None and assessment.assessment_results:
+        # Per-type export
         idx = int(type_index)
         if 0 <= idx < len(assessment.assessment_results):
             type_result = assessment.assessment_results[idx]
@@ -303,12 +309,14 @@ def assessment_misp_json_view(request, pk):
             sector = type_result.get("sector", "unknown")
             filename = f"cyberscale-assessment-{assessment.pk}-{sector}.misp.json"
         else:
-            event = build_misp_event(assessment, entity)
+            event = build_misp_event_global(assessment, entity)
             filename = f"cyberscale-assessment-{assessment.pk}.misp.json"
+    elif assessment.assessment_results:
+        # Global export — one event with all entity type objects
+        event = build_misp_event_global(assessment, entity)
+        filename = f"cyberscale-assessment-{assessment.pk}.misp.json"
     else:
-        if not assessment.misp_event_uuid:
-            assessment.misp_event_uuid = str(uuid_mod.uuid4())
-            assessment.save(update_fields=["misp_event_uuid"])
+        # Legacy single-type export
         event = build_misp_event(assessment, entity)
         filename = f"cyberscale-assessment-{assessment.pk}.misp.json"
 

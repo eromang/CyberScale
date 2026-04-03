@@ -152,6 +152,89 @@ def build_misp_event_for_type(assessment, entity, type_result: dict) -> dict:
     }
 
 
+def build_misp_event_global(assessment, entity) -> dict:
+    """Build a single MISP event with one object per affected entity type.
+
+    One event = one incident. Multiple objects = multiple affected entity types.
+    Uses overall significance for the event-level threat level.
+    """
+    event_uuid = assessment.misp_event_uuid or str(uuid.uuid4())
+
+    sig_label = assessment.result_significance_label
+    if sig_label in ("SIGNIFICANT", "LIKELY"):
+        threat_level_id = "1"
+        sig_tag = "significant"
+    elif sig_label in ("NOT SIGNIFICANT", "UNLIKELY"):
+        threat_level_id = "3"
+        sig_tag = "not-significant"
+    else:
+        threat_level_id = "2"
+        sig_tag = "undetermined"
+
+    tlp = entity.misp_default_tlp or "tlp:amber"
+
+    # Build one object per entity type result
+    objects = []
+    for r in (assessment.assessment_results or []):
+        ew = r.get("early_warning", {})
+        criteria = r.get("triggered_criteria", [])
+        criteria_text = " | ".join(criteria) if isinstance(criteria, list) and criteria else ""
+
+        attrs = [
+            _attr("sector", "text", r.get("sector", "")),
+            _attr("entity-type", "text", r.get("entity_type", "")),
+            _attr("ms-established", "text", entity.ms_established),
+            _attr("description", "text", assessment.description),
+            _attr("service-impact", "text", assessment.service_impact),
+            _attr("data-impact", "text", assessment.data_impact),
+            _attr("safety-impact", "text", assessment.safety_impact),
+            _attr("financial-impact", "text", assessment.financial_impact),
+            _attr("affected-persons-count", "counter", str(assessment.affected_persons_count)),
+            _attr("impact-duration-hours", "counter", str(assessment.impact_duration_hours)),
+            _attr("suspected-malicious", "boolean", "1" if assessment.suspected_malicious else "0"),
+            _attr("significant-incident", "boolean", "1" if r.get("significant_incident") else "0"),
+            _attr("significance-model", "text", r.get("model", "")),
+            _attr("competent-authority", "text", r.get("competent_authority", "")),
+            _attr("framework", "text", r.get("framework", "")),
+            _attr("early-warning-recommended", "boolean", "1" if ew.get("recommended") else "0"),
+            _attr("early-warning-deadline", "text", ew.get("deadline", "")),
+        ]
+        if criteria_text:
+            attrs.append(_attr("triggered-criteria", "text", criteria_text))
+
+        objects.append({
+            "name": "cyberscale-entity-assessment",
+            "meta-category": "misc",
+            "uuid": str(uuid.uuid4()),
+            "Attribute": attrs,
+        })
+
+    # Fallback: if no assessment_results, use legacy single-object
+    if not objects:
+        return build_misp_event(assessment, entity)
+
+    # Build sector list for event info
+    sectors = [r.get("sector", "") for r in assessment.assessment_results]
+    info_sectors = " + ".join(dict.fromkeys(s.replace("_", " ") for s in sectors))
+
+    return {
+        "Event": {
+            "info": f"CyberScale entity assessment: {info_sectors}",
+            "date": assessment.created_at.strftime("%Y-%m-%d"),
+            "threat_level_id": threat_level_id,
+            "analysis": "2",
+            "distribution": "1",
+            "uuid": event_uuid,
+            "Tag": [
+                {"name": 'cyberscale:phase="phase-2"'},
+                {"name": f'nis2:significance="{sig_tag}"'},
+                {"name": tlp},
+            ],
+            "Object": objects,
+        }
+    }
+
+
 def _attr(relation: str, attr_type: str, value: str) -> dict:
     return {
         "object_relation": relation,

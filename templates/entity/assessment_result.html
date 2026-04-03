@@ -111,12 +111,11 @@
 {# Actions #}
 <div class="cs-actions">
   <a href="{% url 'assessment_pdf' assessment.pk %}" role="button">Download PDF</a>
+  <a href="{% url 'assessment_misp_json' assessment.pk %}" role="button" class="secondary">Download MISP JSON</a>
   {% if assessment.assessment_results|length > 1 %}
     {% for r in assessment.assessment_results %}
-      <a href="{% url 'assessment_misp_json' assessment.pk %}?type_index={{ forloop.counter0 }}" role="button" class="secondary">MISP: {{ r.sector|title }}</a>
+      <a href="{% url 'assessment_misp_json' assessment.pk %}?type_index={{ forloop.counter0 }}" role="button" class="outline" style="font-size:0.8rem;">MISP: {{ r.sector|title }}</a>
     {% endfor %}
-  {% else %}
-    <a href="{% url 'assessment_misp_json' assessment.pk %}" role="button" class="secondary">Download MISP JSON</a>
   {% endif %}
   <a href="{% url 'dashboard' %}" role="button" class="outline">Back to Dashboard</a>
 </div>
