@@ -212,25 +212,20 @@ def _determine_competent_authority(ms_established: str, sector: str) -> str:
 
 def run_multi_entity_assessment(
     description: str,
-    affected_entity_types: list[dict],
+    per_type_impacts: list[dict],
     ms_established: str = "EU",
-    ms_affected: list[str] | None = None,
-    service_impact: str = "none",
-    data_impact: str = "none",
-    financial_impact: str = "none",
-    safety_impact: str = "none",
-    affected_persons_count: int = 0,
     suspected_malicious: bool = False,
-    impact_duration_hours: int = 0,
-    sector_specific: dict | None = None,
 ) -> dict:
-    """Run the assessment engine for each affected entity type.
+    """Run the assessment engine for each affected entity type with per-type impacts.
 
     Args:
-        affected_entity_types: list of {"sector": "...", "entity_type": "..."} dicts
+        per_type_impacts: list of dicts, each containing:
+            sector, entity_type, ms_affected, service_impact, data_impact,
+            safety_impact, financial_impact, affected_persons_count,
+            impact_duration_hours, sector_specific
 
     Returns dict with:
-        - per_type_results: list of per-type result dicts
+        - per_type_results: list of per-type result dicts (includes impact data)
         - overall_significance: most severe significance across all types
         - overall_significance_label: label for the most severe
         - overall_early_warning: recommended if any type recommends it
@@ -241,21 +236,22 @@ def run_multi_entity_assessment(
         "UNCERTAIN": 3, "NOT SIGNIFICANT": 2, "UNLIKELY": 1, "": 0,
     }
 
-    for et in affected_entity_types:
+    for impact in per_type_impacts:
+        ms_affected = impact.get("ms_affected") or []
         result = run_entity_assessment(
             description=description,
-            sector=et["sector"],
-            entity_type=et["entity_type"],
+            sector=impact["sector"],
+            entity_type=impact["entity_type"],
             ms_established=ms_established,
-            ms_affected=ms_affected,
-            service_impact=service_impact,
-            data_impact=data_impact,
-            financial_impact=financial_impact,
-            safety_impact=safety_impact,
-            affected_persons_count=affected_persons_count,
+            ms_affected=ms_affected or None,
+            service_impact=impact.get("service_impact", "none"),
+            data_impact=impact.get("data_impact", "none"),
+            financial_impact=impact.get("financial_impact", "none"),
+            safety_impact=impact.get("safety_impact", "none"),
+            affected_persons_count=impact.get("affected_persons_count", 0),
             suspected_malicious=suspected_malicious,
-            impact_duration_hours=impact_duration_hours,
-            sector_specific=sector_specific,
+            impact_duration_hours=impact.get("impact_duration_hours", 0),
+            sector_specific=impact.get("sector_specific") or None,
         )
 
         sig_data = result.get("significance", {})
@@ -271,8 +267,15 @@ def run_multi_entity_assessment(
             sig_bool = None
 
         per_type_results.append({
-            "sector": et["sector"],
-            "entity_type": et["entity_type"],
+            "sector": impact["sector"],
+            "entity_type": impact["entity_type"],
+            "ms_affected": ms_affected,
+            "service_impact": impact.get("service_impact", "none"),
+            "data_impact": impact.get("data_impact", "none"),
+            "safety_impact": impact.get("safety_impact", "none"),
+            "financial_impact": impact.get("financial_impact", "none"),
+            "affected_persons_count": impact.get("affected_persons_count", 0),
+            "impact_duration_hours": impact.get("impact_duration_hours", 0),
             "significant_incident": sig_bool,
             "significance_label": sig_label,
             "model": result.get("model", ""),
