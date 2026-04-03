@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}New Assessment — CyberScale{% endblock %}
+
+{% block content %}
+<div class="cs-page-header">
+  <h2>Incident Assessment</h2>
+  <p>{{ entity.organisation_name }} — {{ entity.sector|title }} / {{ entity.entity_type }} ({{ entity.ms_established }})</p>
+</div>
+
+<ul class="cs-steps">
+  <li class="cs-step active"><span class="cs-step-num">1</span> Context</li>
+  <li class="cs-step active"><span class="cs-step-num">2</span> Impact</li>
+  <li class="cs-step active"><span class="cs-step-num">3</span> Sector</li>
+  <li class="cs-step"><span class="cs-step-num">4</span> Result</li>
+</ul>
+
+<form method="post">
+  {% csrf_token %}
+
+  <fieldset>
+    <legend>Step 1 — Incident Context</legend>
+    <label>Incident description
+      {{ form1.description }}
+    </label>
+    {% if form1.description.errors %}<small style="color: var(--cs-significant);">{{ form1.description.errors.0 }}</small>{% endif %}
+
+    <label>Member states affected
+      {{ form1.ms_affected }}
+    </label>
+    <p><small style="color: var(--cs-text-muted);">Sector and entity type pre-filled from your profile: <strong>{{ entity.sector }}</strong> / <strong>{{ entity.entity_type }}</strong></small></p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Step 2 — Impact Assessment</legend>
+    <div class="grid">
+      <label>Service impact {{ form2.service_impact }}</label>
+      <label>Data impact {{ form2.data_impact }}</label>
+    </div>
+    <div class="grid">
+      <label>Safety impact {{ form2.safety_impact }}</label>
+      <label>Financial impact {{ form2.financial_impact }}</label>
+    </div>
+    <div class="grid">
+      <label>Affected persons count {{ form2.affected_persons_count }}</label>
+      <label>Impact duration (hours) {{ form2.impact_duration_hours }}</label>
+    </div>
+    <div class="grid">
+      <label>{{ form2.suspected_malicious }} Suspected malicious</label>
+      <label>{{ form2.physical_access_breach }} Physical access breach (IR only)</label>
+    </div>
+  </fieldset>
+
+  <details>
+    <summary>Step 3 — Sector-Specific Fields (optional)</summary>
+    <fieldset>
+      <p><small style="color: var(--cs-text-muted);">Fill these if your entity is in a Luxembourg-regulated sector with ILR thresholds.</small></p>
+
+      <h4 style="color: var(--cs-navy);">Electricity</h4>
+      <div class="grid">
+        <label>PODs affected {{ form3.pods_affected }}</label>
+        <label>Voltage level {{ form3.voltage_level }}</label>
+        <label>SCADA unavailable (min) {{ form3.scada_unavailable_min }}</label>
+      </div>
+
+      <h4 style="color: var(--cs-navy);">Rail</h4>
+      <div class="grid">
+        <label>Trains cancelled % {{ form3.trains_cancelled_pct }}</label>
+        <label>Slots impacted {{ form3.slots_impacted }}</label>
+      </div>
+
+      <h4 style="color: var(--cs-navy);">Health</h4>
+      <div class="grid">
+        <label>Persons with health impact {{ form3.persons_health_impact }}</label>
+        <label>Analyses affected % {{ form3.analyses_affected_pct }}</label>
+      </div>
+    </fieldset>
+  </details>
+
+  <button type="submit">Run Assessment</button>
+</form>
+{% endblock %}
