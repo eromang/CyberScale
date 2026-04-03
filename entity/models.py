@@ -101,6 +101,10 @@ class Assessment(models.Model):
         default=list, blank=True,
         help_text="Per-entity-type assessment results",
     )
+    per_type_impacts = models.JSONField(
+        default=list, blank=True,
+        help_text="Per-entity-type impact data (ms_affected, impacts, sector_specific per type)",
+    )
 
     # Step 4 — Results (populated by assessment engine)
     result_significance = models.BooleanField(null=True, blank=True)
