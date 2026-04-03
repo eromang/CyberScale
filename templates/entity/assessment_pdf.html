@@ -106,15 +106,29 @@
   {% endif %}
 {% endwith %}
 
-<h2>Impact Summary</h2>
-<table>
-  <tr><th>Service</th><td>{{ assessment.service_impact }}{% if assessment.impact_duration_hours %} ({{ assessment.impact_duration_hours }}h){% endif %}</td></tr>
-  <tr><th>Data</th><td>{{ assessment.data_impact }}</td></tr>
-  <tr><th>Safety</th><td>{{ assessment.safety_impact }}</td></tr>
-  <tr><th>Financial</th><td>{{ assessment.financial_impact }}</td></tr>
-  <tr><th>Affected persons</th><td>{{ assessment.affected_persons_count|default:"0" }}</td></tr>
-  <tr><th>Suspected malicious</th><td>{% if assessment.suspected_malicious %}Yes{% else %}No{% endif %}</td></tr>
-</table>
+{% if assessment.assessment_results %}
+  {% for r in assessment.assessment_results %}
+  <h2>Impact — {{ r.sector|default:""|title }} / {{ r.entity_type|default:"" }}</h2>
+  {% if r.ms_affected %}<p style="color: #6c757d; font-size: 10pt;">MS affected: {{ r.ms_affected|join:", " }}</p>{% endif %}
+  <table>
+    <tr><th>Service</th><td>{{ r.service_impact|default:"none" }}{% if r.impact_duration_hours %} ({{ r.impact_duration_hours }}h){% endif %}</td></tr>
+    <tr><th>Data</th><td>{{ r.data_impact|default:"none" }}</td></tr>
+    <tr><th>Safety</th><td>{{ r.safety_impact|default:"none" }}</td></tr>
+    <tr><th>Financial</th><td>{{ r.financial_impact|default:"none" }}</td></tr>
+    <tr><th>Affected persons</th><td>{{ r.affected_persons_count|default:"0" }}</td></tr>
+  </table>
+  {% endfor %}
+{% else %}
+  <h2>Impact Summary</h2>
+  <table>
+    <tr><th>Service</th><td>{{ assessment.service_impact }}{% if assessment.impact_duration_hours %} ({{ assessment.impact_duration_hours }}h){% endif %}</td></tr>
+    <tr><th>Data</th><td>{{ assessment.data_impact }}</td></tr>
+    <tr><th>Safety</th><td>{{ assessment.safety_impact }}</td></tr>
+    <tr><th>Financial</th><td>{{ assessment.financial_impact }}</td></tr>
+    <tr><th>Affected persons</th><td>{{ assessment.affected_persons_count|default:"0" }}</td></tr>
+    <tr><th>Suspected malicious</th><td>{% if assessment.suspected_malicious %}Yes{% else %}No{% endif %}</td></tr>
+  </table>
+{% endif %}
 
 <h2>Incident Description</h2>
 <p>{{ assessment.description }}</p>
