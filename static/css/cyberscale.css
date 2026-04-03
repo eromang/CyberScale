@@ -178,6 +178,11 @@ nav.cs-nav .cs-brand::before {
   font-size: 0.75em;
 }
 
+.badge-draft {
+  background: var(--cs-steel);
+  color: #fff;
+}
+
 /* ---- Criteria list ---- */
 .cs-criteria-list {
   list-style: none;
