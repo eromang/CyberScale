@@ -22,7 +22,7 @@
           <th>#</th>
           <th>Date</th>
           <th>Description</th>
-          <th>Significance</th>
+          <th>Status</th>
           <th>Model</th>
           <th>Actions</th>
         </tr>
@@ -34,7 +34,9 @@
           <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
           <td>{{ a.description|truncatewords:10 }}</td>
           <td>
-            {% if a.result_significance_label == "SIGNIFICANT" or a.result_significance_label == "LIKELY" %}
+            {% if a.status == "draft" %}
+              <span class="badge badge-draft">DRAFT</span>
+            {% elif a.result_significance_label == "SIGNIFICANT" or a.result_significance_label == "LIKELY" %}
               <span class="badge badge-significant">{{ a.result_significance_label }}</span>
             {% elif a.result_significance_label == "NOT SIGNIFICANT" or a.result_significance_label == "UNLIKELY" %}
               <span class="badge badge-not-significant">{{ a.result_significance_label }}</span>
@@ -42,11 +44,26 @@
               <span class="badge badge-undetermined">{{ a.result_significance_label }}</span>
             {% endif %}
           </td>
-          <td><span class="badge badge-model">{{ a.result_model }}</span></td>
           <td>
-            <a href="{% url 'assessment_result' a.pk %}">View</a>
-            &middot; <a href="{% url 'assessment_pdf' a.pk %}">PDF</a>
-            &middot; <a href="{% url 'assessment_misp_json' a.pk %}">MISP</a>
+            {% if a.status == "draft" %}
+              <span style="color: var(--cs-text-muted);">—</span>
+            {% else %}
+              <span class="badge badge-model">{{ a.result_model }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.status == "draft" %}
+              <a href="{% url 'resume_draft' a.pk %}">Resume</a>
+              &middot;
+              <form method="post" action="{% url 'delete_draft' a.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none;border:none;color:var(--cs-significant);cursor:pointer;padding:0;font-size:inherit;text-decoration:underline;" onclick="return confirm('Delete draft #{{ a.pk }}?')">Delete</button>
+              </form>
+            {% else %}
+              <a href="{% url 'assessment_result' a.pk %}">View</a>
+              &middot; <a href="{% url 'assessment_pdf' a.pk %}">PDF</a>
+              &middot; <a href="{% url 'assessment_misp_json' a.pk %}">MISP</a>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
