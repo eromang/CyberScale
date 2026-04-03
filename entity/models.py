@@ -26,6 +26,37 @@ class Entity(models.Model):
         return f"{self.organisation_name} ({self.sector}/{self.entity_type})"
 
 
+class EntityType(models.Model):
+    """A sector/entity_type registration for an Entity. One Entity can have many."""
+
+    entity = models.ForeignKey(
+        "Entity", on_delete=models.CASCADE, related_name="entity_types"
+    )
+    sector = models.CharField(max_length=100)
+    entity_type = models.CharField(max_length=100)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("entity", "entity_type")
+        ordering = ["sector", "entity_type"]
+
+    def __str__(self):
+        return f"{self.sector}/{self.entity_type}"
+
+    @property
+    def label(self):
+        """Human-readable label from reference data."""
+        from .forms import _load_entity_type_data
+        for et in _load_entity_type_data():
+            if et["id"] == self.entity_type:
+                return et["label"]
+        return self.entity_type.replace("_", " ").title()
+
+    @property
+    def sector_label(self):
+        return self.sector.replace("_", " ").title()
+
+
 class Assessment(models.Model):
     """Incident assessment record."""
 
@@ -60,6 +91,16 @@ class Assessment(models.Model):
 
     # Step 3 — Sector-specific (JSON blob)
     sector_specific = models.JSONField(default=dict, blank=True)
+
+    # Multi-entity-type support
+    affected_entity_types = models.JSONField(
+        default=list, blank=True,
+        help_text='List of {"sector": "...", "entity_type": "..."} dicts',
+    )
+    assessment_results = models.JSONField(
+        default=list, blank=True,
+        help_text="Per-entity-type assessment results",
+    )
 
     # Step 4 — Results (populated by assessment engine)
     result_significance = models.BooleanField(null=True, blank=True)
