@@ -40,4 +40,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-testpaths = ["src/tests"]
+testpaths = ["src/tests", "entity/tests"]
+DJANGO_SETTINGS_MODULE = "cyberscale_web.settings"
