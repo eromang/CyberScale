@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+.venv/
+
+# Data artifacts (reproducible from scripts)
+data/chromadb/
+data/models/
+training/data/
+
+# Secrets
+.env
+.env.*
+*.token
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Poetry
+poetry.lock
