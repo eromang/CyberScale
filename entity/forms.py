@@ -179,3 +179,60 @@ class AssessmentStep3Form(forms.Form):
             if value not in (None, "", 0, 0.0):
                 result[field_name] = value
         return result
+
+
+import ipaddress as _ipaddress
+
+
+class EntityProfileForm(forms.ModelForm):
+    """Entity profile editing form with Art. 27 fields."""
+
+    ip_ranges = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "One CIDR per line, e.g.:\n192.168.1.0/24\n10.0.0.0/8"}),
+        required=False,
+        help_text="IP address ranges in CIDR notation, one per line.",
+    )
+    ms_services = forms.MultipleChoiceField(
+        choices=[(code, label) for code, label in MS_CHOICES if code],
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        help_text="Member states where this entity provides services.",
+    )
+
+    class Meta:
+        model = Entity
+        fields = [
+            "organisation_name", "address",
+            "contact_email", "contact_phone",
+            "responsible_person_name", "responsible_person_email",
+            "technical_contact_name", "technical_contact_email", "technical_contact_phone",
+            "ip_ranges", "ms_services",
+            "misp_instance_url", "misp_api_key", "misp_default_tlp",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-populate ip_ranges textarea from JSON list
+        if self.instance and self.instance.ip_ranges:
+            self.initial["ip_ranges"] = "\n".join(self.instance.ip_ranges)
+        # misp_default_tlp has a model default — not required in form
+        self.fields["misp_default_tlp"].required = False
+
+    def clean_ip_ranges(self):
+        raw = self.cleaned_data.get("ip_ranges", "")
+        if not raw.strip():
+            return []
+        ranges = []
+        errors = []
+        for i, line in enumerate(raw.strip().split("\n"), 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                net = _ipaddress.ip_network(line, strict=False)
+                ranges.append(str(net))
+            except ValueError:
+                errors.append(f"Line {i}: '{line}' is not a valid CIDR")
+        if errors:
+            raise forms.ValidationError(errors)
+        return ranges
