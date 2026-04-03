@@ -22,6 +22,7 @@ services:
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
+             python manage.py setup_playground &&
              python manage.py runserver 0.0.0.0:8000"
     environment:
       DATABASE_URL: postgres://cyberscale:cyberscale_dev@postgres:5432/cyberscale
@@ -29,7 +30,7 @@ services:
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
       MISP_URL: "https://misp"
-      MISP_API_KEY: "changeme-run-misp-authkey-setup"
+      MISP_API_KEY: "v4RaIPn5p7Fhxjmb26bNWFVrT0S9h05sfBJy9vqt"
       MISP_SSL_VERIFY: "false"
     volumes:
       - .:/app
@@ -78,6 +79,9 @@ services:
       ADMIN_PASSWORD: "admin"
       ADMIN_KEY: "cyberscale-misp-test-api-key"
       NOREDIR: "true"
+    volumes:
+      - ./data/misp-objects:/misp-objects:ro
+      - ./scripts/misp-init.sh:/scripts/misp-init.sh:ro
     ports:
       - "8443:443"
     depends_on:

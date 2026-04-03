@@ -1,0 +1,28 @@
+{
+  "name": "cyberscale-entity-assessment",
+  "meta-category": "misc",
+  "description": "CyberScale NIS2 incident severity assessment",
+  "version": 1,
+  "uuid": "c5e0f001-e27a-4f00-a000-000000000002",
+  "attributes": {
+    "sector": {"misp-attribute": "text", "ui-priority": 1, "description": "NIS2 sector"},
+    "entity-type": {"misp-attribute": "text", "ui-priority": 2, "description": "NIS2 entity type"},
+    "ms-established": {"misp-attribute": "text", "ui-priority": 3, "description": "Member state of establishment"},
+    "ms-affected": {"misp-attribute": "text", "ui-priority": 4, "description": "Member states affected (comma-separated)"},
+    "description": {"misp-attribute": "text", "ui-priority": 5, "description": "Incident description"},
+    "service-impact": {"misp-attribute": "text", "ui-priority": 6, "description": "none / partial / degraded / unavailable / sustained"},
+    "data-impact": {"misp-attribute": "text", "ui-priority": 7, "description": "none / accessed / exfiltrated / compromised / systemic"},
+    "safety-impact": {"misp-attribute": "text", "ui-priority": 8, "description": "none / health_risk / health_damage / death"},
+    "financial-impact": {"misp-attribute": "text", "ui-priority": 9, "description": "none / minor / significant / severe"},
+    "affected-persons-count": {"misp-attribute": "counter", "ui-priority": 10, "description": "Number of persons affected"},
+    "impact-duration-hours": {"misp-attribute": "counter", "ui-priority": 11, "description": "Duration of impact in hours"},
+    "suspected-malicious": {"misp-attribute": "boolean", "ui-priority": 12, "description": "Whether incident is suspected malicious"},
+    "significant-incident": {"misp-attribute": "boolean", "ui-priority": 13, "description": "Whether incident is significant under NIS2"},
+    "significance-model": {"misp-attribute": "text", "ui-priority": 14, "description": "ir_thresholds / national_lu / national_be / nis2_ml"},
+    "competent-authority": {"misp-attribute": "text", "ui-priority": 15, "description": "Competent authority (ILR, CCB, CSSF, etc.)"},
+    "framework": {"misp-attribute": "text", "ui-priority": 16, "description": "Regulatory framework applied"},
+    "early-warning-recommended": {"misp-attribute": "boolean", "ui-priority": 17, "description": "Whether early warning should be sent"},
+    "early-warning-deadline": {"misp-attribute": "text", "ui-priority": 18, "description": "Deadline for early warning (24h NIS2, 4h DORA)"},
+    "triggered-criteria": {"misp-attribute": "text", "ui-priority": 19, "description": "Triggered threshold criteria (pipe-separated)"}
+  }
+}

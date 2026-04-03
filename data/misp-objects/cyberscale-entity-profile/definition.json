@@ -1,0 +1,23 @@
+{
+  "name": "cyberscale-entity-profile",
+  "meta-category": "misc",
+  "description": "CyberScale NIS2 Art. 27 entity registration profile",
+  "version": 1,
+  "uuid": "c5e0f001-e27a-4f00-a000-000000000001",
+  "attributes": {
+    "organisation-name": {"misp-attribute": "text", "ui-priority": 1, "description": "Entity organisation name"},
+    "address": {"misp-attribute": "text", "ui-priority": 2, "description": "Entity address"},
+    "contact-email": {"misp-attribute": "email-src", "ui-priority": 3, "description": "General contact email"},
+    "contact-phone": {"misp-attribute": "phone-number", "ui-priority": 4, "description": "General contact phone"},
+    "responsible-person-name": {"misp-attribute": "text", "ui-priority": 5, "description": "Responsible person name (legal/management)"},
+    "responsible-person-email": {"misp-attribute": "email-src", "ui-priority": 6, "description": "Responsible person email"},
+    "technical-contact-name": {"misp-attribute": "text", "ui-priority": 7, "description": "Technical contact name (operational/incident response)"},
+    "technical-contact-email": {"misp-attribute": "email-src", "ui-priority": 8, "description": "Technical contact email"},
+    "technical-contact-phone": {"misp-attribute": "phone-number", "ui-priority": 9, "description": "Technical contact phone"},
+    "ms-established": {"misp-attribute": "text", "ui-priority": 10, "description": "Member state of establishment"},
+    "ms-services": {"misp-attribute": "text", "ui-priority": 11, "description": "Member states where services are provided (comma-separated)"},
+    "ip-range": {"misp-attribute": "ip-src", "ui-priority": 12, "multiple": true, "description": "IP address range (CIDR notation)"},
+    "sector": {"misp-attribute": "text", "ui-priority": 13, "multiple": true, "description": "NIS2 sector"},
+    "entity-type": {"misp-attribute": "text", "ui-priority": 14, "multiple": true, "description": "NIS2 entity type"}
+  }
+}
