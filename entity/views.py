@@ -67,52 +67,28 @@ def dashboard_view(request):
 
 
 @login_required
-def assessment_form_view(request):
+def assessment_form_view(request, draft_pk=None):
     entity = get_object_or_404(Entity, user=request.user)
+
+    # Load existing draft if resuming
+    draft = None
+    if draft_pk:
+        draft = get_object_or_404(Assessment, pk=draft_pk, entity=entity, status="draft")
 
     if request.method == "POST":
         form1 = AssessmentStep1Form(request.POST)
         form2 = AssessmentStep2Form(request.POST)
         form3 = AssessmentStep3Form(request.POST)
 
+        # Check which button was clicked
+        is_draft = "save_draft" in request.POST
+
         if form1.is_valid() and form2.is_valid() and form3.is_valid():
-            # Run assessment engine
             sector_specific = form3.get_sector_specific()
             ms_affected = form1.cleaned_data.get("ms_affected", [])
 
-            result = run_entity_assessment(
-                description=form1.cleaned_data["description"],
-                sector=entity.sector,
-                entity_type=entity.entity_type,
-                ms_established=entity.ms_established,
-                ms_affected=ms_affected or None,
-                service_impact=form2.cleaned_data["service_impact"],
-                data_impact=form2.cleaned_data["data_impact"],
-                financial_impact=form2.cleaned_data["financial_impact"],
-                safety_impact=form2.cleaned_data["safety_impact"],
-                affected_persons_count=form2.cleaned_data["affected_persons_count"],
-                suspected_malicious=form2.cleaned_data["suspected_malicious"],
-                impact_duration_hours=form2.cleaned_data["impact_duration_hours"],
-                sector_specific=sector_specific or None,
-            )
-
-            # Extract significance info
-            sig_data = result.get("significance", {})
-            significant = sig_data.get("significant_incident")
-            if isinstance(significant, str):
-                sig_label = significant.upper()
-                sig_bool = significant == "likely"
-            elif isinstance(significant, bool):
-                sig_label = "SIGNIFICANT" if significant else "NOT SIGNIFICANT"
-                sig_bool = significant
-            else:
-                sig_label = "UNDETERMINED"
-                sig_bool = None
-
-            # Save assessment
-            assessment = Assessment.objects.create(
-                entity=entity,
-                status="completed",
+            # Common fields for both draft and completed
+            fields = dict(
                 description=form1.cleaned_data["description"],
                 sector=entity.sector,
                 entity_type=entity.entity_type,
@@ -126,28 +102,115 @@ def assessment_form_view(request):
                 suspected_malicious=form2.cleaned_data["suspected_malicious"],
                 physical_access_breach=form2.cleaned_data["physical_access_breach"],
                 sector_specific=sector_specific,
-                result_significance=sig_bool,
-                result_significance_label=sig_label,
-                result_model=result.get("model", ""),
-                result_criteria=sig_data.get("triggered_criteria", []),
-                result_framework=result.get("framework", ""),
-                result_competent_authority=result.get("competent_authority", ""),
-                result_early_warning=result.get("early_warning", {}),
-                result_raw=result,
             )
 
-            return redirect("assessment_result", pk=assessment.pk)
+            if is_draft:
+                # Save as draft — no engine run
+                if draft:
+                    for k, v in fields.items():
+                        setattr(draft, k, v)
+                    draft.save()
+                    assessment = draft
+                else:
+                    assessment = Assessment.objects.create(
+                        entity=entity, status="draft", **fields,
+                    )
+                from django.contrib import messages
+                messages.success(request, f"Draft #{assessment.pk} saved.")
+                return redirect("dashboard")
+            else:
+                # Run assessment engine
+                result = run_entity_assessment(
+                    description=fields["description"],
+                    sector=entity.sector,
+                    entity_type=entity.entity_type,
+                    ms_established=entity.ms_established,
+                    ms_affected=ms_affected or None,
+                    service_impact=fields["service_impact"],
+                    data_impact=fields["data_impact"],
+                    financial_impact=fields["financial_impact"],
+                    safety_impact=fields["safety_impact"],
+                    affected_persons_count=fields["affected_persons_count"],
+                    suspected_malicious=fields["suspected_malicious"],
+                    impact_duration_hours=fields["impact_duration_hours"],
+                    sector_specific=sector_specific or None,
+                )
+
+                sig_data = result.get("significance", {})
+                significant = sig_data.get("significant_incident")
+                if isinstance(significant, str):
+                    sig_label = significant.upper()
+                    sig_bool = significant == "likely"
+                elif isinstance(significant, bool):
+                    sig_label = "SIGNIFICANT" if significant else "NOT SIGNIFICANT"
+                    sig_bool = significant
+                else:
+                    sig_label = "UNDETERMINED"
+                    sig_bool = None
+
+                result_fields = dict(
+                    status="completed",
+                    result_significance=sig_bool,
+                    result_significance_label=sig_label,
+                    result_model=result.get("model", ""),
+                    result_criteria=sig_data.get("triggered_criteria", []),
+                    result_framework=result.get("framework", ""),
+                    result_competent_authority=result.get("competent_authority", ""),
+                    result_early_warning=result.get("early_warning", {}),
+                    result_raw=result,
+                )
+
+                if draft:
+                    for k, v in {**fields, **result_fields}.items():
+                        setattr(draft, k, v)
+                    draft.save()
+                    return redirect("assessment_result", pk=draft.pk)
+                else:
+                    assessment = Assessment.objects.create(
+                        entity=entity, **fields, **result_fields,
+                    )
+                    return redirect("assessment_result", pk=assessment.pk)
     else:
-        form1 = AssessmentStep1Form()
-        form2 = AssessmentStep2Form()
-        form3 = AssessmentStep3Form()
+        # Pre-populate forms from draft if resuming
+        if draft:
+            form1 = AssessmentStep1Form(initial={
+                "description": draft.description,
+                "ms_affected": draft.ms_affected,
+            })
+            form2 = AssessmentStep2Form(initial={
+                "service_impact": draft.service_impact,
+                "data_impact": draft.data_impact,
+                "safety_impact": draft.safety_impact,
+                "financial_impact": draft.financial_impact,
+                "affected_persons_count": draft.affected_persons_count,
+                "impact_duration_hours": draft.impact_duration_hours,
+                "suspected_malicious": draft.suspected_malicious,
+                "physical_access_breach": draft.physical_access_breach,
+            })
+            form3 = AssessmentStep3Form(initial=draft.sector_specific)
+        else:
+            form1 = AssessmentStep1Form()
+            form2 = AssessmentStep2Form()
+            form3 = AssessmentStep3Form()
 
     return render(request, "entity/assessment_form.html", {
         "entity": entity,
         "form1": form1,
         "form2": form2,
         "form3": form3,
+        "draft": draft,
     })
+
+
+@login_required
+def delete_draft_view(request, pk):
+    entity = get_object_or_404(Entity, user=request.user)
+    draft = get_object_or_404(Assessment, pk=pk, entity=entity, status="draft")
+    if request.method == "POST":
+        draft.delete()
+        from django.contrib import messages
+        messages.success(request, "Draft deleted.")
+    return redirect("dashboard")
 
 
 @login_required
