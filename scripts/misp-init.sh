@@ -36,15 +36,19 @@ done
 echo "[2/5] Configuring authentication..."
 $CAKE admin setSetting Security.advanced_authkeys false >/dev/null 2>&1 || true
 
-# Generate API key
-echo "[3/5] Generating API key for admin@admin.test..."
-KEY_OUTPUT=$($CAKE user change_authkey admin@admin.test 2>&1)
-API_KEY=$(echo "$KEY_OUTPUT" | grep -oP 'key created: \K\S+' || echo "$KEY_OUTPUT" | grep -oP 'changed to: \K\S+')
-
-if [ -z "$API_KEY" ]; then
-    echo "  ERROR: Failed to generate API key."
-    echo "  Output: $KEY_OUTPUT"
-    exit 1
+# Get or generate API key
+echo "[3/5] Configuring API key..."
+if [ -n "$ADMIN_KEY" ] && [ ${#ADMIN_KEY} -eq 40 ]; then
+    API_KEY="$ADMIN_KEY"
+    echo "  Using fixed ADMIN_KEY from environment"
+else
+    KEY_OUTPUT=$($CAKE user change_authkey admin@admin.test 2>&1)
+    API_KEY=$(echo "$KEY_OUTPUT" | sed -n 's/.*\(key created: \|changed to: \)\(.*\)/\2/p')
+    if [ -z "$API_KEY" ]; then
+        echo "  ERROR: Failed to generate API key."
+        echo "  Output: $KEY_OUTPUT"
+        exit 1
+    fi
 fi
 echo "  API key: $API_KEY"
 

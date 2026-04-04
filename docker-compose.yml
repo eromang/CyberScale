@@ -30,10 +30,10 @@ services:
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
       MISP_URL: "https://misp"
-      MISP_API_KEY: "bZQyaa5SmvzyZ7zanXrtoxg6VQNSHK6vqnh7rfaE"
+      MISP_API_KEY: "MY2hLF7DmGVU6oKg2bh1NDzGjTcZYzu6S1zDri4O"
       MISP_SSL_VERIFY: "false"
       MISP_B_URL: "https://misp-b"
-      MISP_B_API_KEY: "gqD0a10tn9yzKJlwXX1cGOBHaTYG5wmhqZVhVfMh"
+      MISP_B_API_KEY: "DeuxET40oeBEnvT4g7aK3AWUEBylhhGLMWVY6RWX"
     volumes:
       - .:/app
       - model_cache:/app/data/models
@@ -79,7 +79,7 @@ services:
       BASE_URL: "https://localhost"
       ADMIN_EMAIL: "admin@admin.test"
       ADMIN_PASSWORD: "admin"
-      ADMIN_KEY: "cyberscale-misp-test-api-key"
+      ADMIN_KEY: "MY2hLF7DmGVU6oKg2bh1NDzGjTcZYzu6S1zDri4O"
       NOREDIR: "true"
     volumes:
       - ./data/misp-objects:/misp-objects:ro
@@ -128,6 +128,7 @@ services:
       BASE_URL: "https://localhost:8444"
       ADMIN_EMAIL: "admin@admin.test"
       ADMIN_PASSWORD: "admin"
+      ADMIN_KEY: "DeuxET40oeBEnvT4g7aK3AWUEBylhhGLMWVY6RWX"
       NOREDIR: "true"
     volumes:
       - ./data/misp-objects:/misp-objects:ro
