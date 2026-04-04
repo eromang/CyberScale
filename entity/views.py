@@ -197,11 +197,16 @@ def assessment_form_view(request, draft_pk=None):
                 messages.success(request, f"Draft #{assessment.pk} saved.")
                 return redirect("dashboard")
             else:
+                et_objs = {}
+                for et in entity.entity_types.select_related("competent_authority", "csirt").all():
+                    et_objs[f"{et.sector}:{et.entity_type}"] = et
+
                 multi_result = run_multi_entity_assessment(
                     description=fields["description"],
                     per_type_impacts=per_type_impacts,
                     ms_established=entity.ms_established,
                     suspected_malicious=fields["suspected_malicious"],
+                    entity_type_objs=et_objs,
                 )
 
                 result_fields = dict(

@@ -25,6 +25,7 @@ def run_entity_assessment(
     suspected_malicious: bool = False,
     impact_duration_hours: int = 0,
     sector_specific: dict | None = None,
+    entity_type_obj=None,
 ) -> dict:
     """Run the entity assessment using CyberScale core library.
 
@@ -134,7 +135,29 @@ def run_entity_assessment(
 
     # Determine framework and competent authority
     framework = _determine_framework(ms_established, sector, entity_type)
-    competent_authority = _determine_competent_authority(ms_established, sector)
+
+    # Read authority from EntityType FK if available, else fallback to hardcoded
+    if entity_type_obj and entity_type_obj.competent_authority:
+        competent_authority = entity_type_obj.competent_authority.abbreviation
+    else:
+        competent_authority = _determine_competent_authority(ms_established, sector)
+
+    if entity_type_obj and entity_type_obj.csirt:
+        csirt_abbrev = entity_type_obj.csirt.abbreviation
+    else:
+        csirt_abbrev = ""
+
+    # Determine notification recipient
+    notification_recipient = ""
+    if entity_type_obj:
+        ca_obj = entity_type_obj.competent_authority
+        csirt_obj = entity_type_obj.csirt
+        if ca_obj and ca_obj.receives_notifications:
+            notification_recipient = ca_obj.abbreviation
+        elif csirt_obj and csirt_obj.receives_notifications:
+            notification_recipient = csirt_obj.abbreviation
+
+    authority_override = bool(entity_type_obj and not entity_type_obj.ca_auto_assigned)
 
     return {
         "sector": sector,
@@ -146,6 +169,9 @@ def run_entity_assessment(
         "model": model_used,
         "framework": framework,
         "competent_authority": competent_authority,
+        "csirt": csirt_abbrev,
+        "notification_recipient": notification_recipient,
+        "authority_override": authority_override,
         "early_warning": early_warning.to_dict(),
     }
 
@@ -215,6 +241,7 @@ def run_multi_entity_assessment(
     per_type_impacts: list[dict],
     ms_established: str = "EU",
     suspected_malicious: bool = False,
+    entity_type_objs: dict | None = None,
 ) -> dict:
     """Run the assessment engine for each affected entity type with per-type impacts.
 
@@ -238,6 +265,8 @@ def run_multi_entity_assessment(
 
     for impact in per_type_impacts:
         ms_affected = impact.get("ms_affected") or []
+        et_key = f"{impact['sector']}:{impact['entity_type']}"
+        et_obj = entity_type_objs.get(et_key) if entity_type_objs else None
         result = run_entity_assessment(
             description=description,
             sector=impact["sector"],
@@ -252,6 +281,7 @@ def run_multi_entity_assessment(
             suspected_malicious=suspected_malicious,
             impact_duration_hours=impact.get("impact_duration_hours", 0),
             sector_specific=impact.get("sector_specific") or None,
+            entity_type_obj=et_obj,
         )
 
         sig_data = result.get("significance", {})
@@ -282,6 +312,9 @@ def run_multi_entity_assessment(
             "triggered_criteria": sig_data.get("triggered_criteria", []),
             "framework": result.get("framework", ""),
             "competent_authority": result.get("competent_authority", ""),
+            "csirt": result.get("csirt", ""),
+            "notification_recipient": result.get("notification_recipient", ""),
+            "authority_override": result.get("authority_override", False),
             "early_warning": result.get("early_warning", {}),
         })
 

@@ -252,3 +252,70 @@ class AutoAssignmentTest(TestCase):
         et.refresh_from_db()
         assert et.competent_authority.abbreviation == "CSSF"
         assert et.ca_auto_assigned is False
+
+
+class AssessmentAuthorityTest(TestCase):
+    def setUp(self):
+        call_command("seed_authorities")
+        self.user = User.objects.create_user("assessauth", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user, organisation_name="Assess Auth Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+        self.et = EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(self.et)
+
+    def test_assessment_reads_ca_from_fk(self):
+        from entity.assessment import run_entity_assessment
+        result = run_entity_assessment(
+            description="Test incident",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            service_impact="degraded",
+            entity_type_obj=self.et,
+        )
+        assert result["competent_authority"] == "ILR"
+        assert result["csirt"] == "CIRCL"
+
+    def test_assessment_includes_notification_recipient(self):
+        from entity.assessment import run_entity_assessment
+        result = run_entity_assessment(
+            description="Test incident",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            service_impact="degraded",
+            entity_type_obj=self.et,
+        )
+        assert result["notification_recipient"] == "ILR"
+
+    def test_assessment_no_authority_fallback(self):
+        from entity.assessment import run_entity_assessment
+        result = run_entity_assessment(
+            description="Test incident",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            service_impact="degraded",
+            entity_type_obj=None,
+        )
+        # Falls back to hardcoded _determine_competent_authority
+        assert result["competent_authority"] == "ILR"
+
+    def test_assessment_authority_override_flag(self):
+        from entity.assessment import run_entity_assessment
+        self.et.ca_auto_assigned = False
+        self.et.save()
+        result = run_entity_assessment(
+            description="Test incident",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            service_impact="degraded",
+            entity_type_obj=self.et,
+        )
+        assert result["authority_override"] is True
