@@ -32,6 +32,8 @@ services:
       MISP_URL: "https://misp"
       MISP_API_KEY: "bZQyaa5SmvzyZ7zanXrtoxg6VQNSHK6vqnh7rfaE"
       MISP_SSL_VERIFY: "false"
+      MISP_B_URL: "https://misp-b"
+      MISP_B_API_KEY: "changeme-run-misp-b-init"
     volumes:
       - .:/app
       - model_cache:/app/data/models
@@ -90,7 +92,56 @@ services:
       misp-redis:
         condition: service_healthy
 
+  misp-b-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: misp_b_dev
+      MYSQL_ROOT_PASSWORD: misp_b_root_dev
+    volumes:
+      - misp_b_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pmisp_b_root_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  misp-b-redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass redispassword
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redispassword", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  misp-b:
+    image: ghcr.io/misp/misp-docker/misp-core:latest
+    environment:
+      MYSQL_HOST: misp-b-db
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: misp_b_dev
+      REDIS_HOST: misp-b-redis
+      BASE_URL: "https://localhost:8444"
+      ADMIN_EMAIL: "admin@admin.test"
+      ADMIN_PASSWORD: "admin"
+      NOREDIR: "true"
+    volumes:
+      - ./data/misp-objects:/misp-objects:ro
+      - ./scripts/misp-b-init.sh:/scripts/misp-b-init.sh:ro
+    ports:
+      - "8444:443"
+    depends_on:
+      misp-b-db:
+        condition: service_healthy
+      misp-b-redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   model_cache:
   misp_db_data:
+  misp_b_db_data:
