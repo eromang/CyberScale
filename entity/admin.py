@@ -7,12 +7,12 @@ from django.http import HttpResponse
 
 MISP_SSL_VERIFY = os.environ.get("MISP_SSL_VERIFY", "").lower() not in ("0", "false", "no", "")
 
-from .models import Assessment, Entity, EntityType, Submission
+from .models import Assessment, CompetentAuthority, CSIRT, Entity, EntityType, Submission
 
 
 class EntityTypeInline(admin.TabularInline):
     model = EntityType
-    fields = ("sector", "entity_type", "added_at")
+    fields = ("sector", "entity_type", "competent_authority", "csirt", "ca_auto_assigned", "added_at")
     readonly_fields = ("added_at",)
     extra = 1
 
@@ -75,11 +75,38 @@ def push_profile_to_misp(modeladmin, request, queryset):
 push_profile_to_misp.short_description = "Push profile to MISP"
 
 
+@admin.register(CompetentAuthority)
+class CompetentAuthorityAdmin(admin.ModelAdmin):
+    list_display = ("abbreviation", "name", "ms", "receives_notifications")
+    list_filter = ("ms", "receives_notifications")
+    search_fields = ("name", "abbreviation")
+
+
+@admin.register(CSIRT)
+class CSIRTAdmin(admin.ModelAdmin):
+    list_display = ("abbreviation", "name", "ms", "receives_notifications", "emergency_phone")
+    list_filter = ("ms", "receives_notifications")
+    search_fields = ("name", "abbreviation")
+
+
 @admin.register(EntityType)
 class EntityTypeAdmin(admin.ModelAdmin):
-    list_display = ("entity", "sector", "entity_type", "added_at")
-    list_filter = ("sector",)
+    list_display = ("entity", "sector", "entity_type", "competent_authority", "csirt", "ca_auto_assigned", "added_at")
+    list_filter = ("sector", "competent_authority", "csirt")
     search_fields = ("entity__organisation_name", "entity_type")
+    actions = ["reassign_authority"]
+
+    @admin.action(description="Re-assign authority automatically")
+    def reassign_authority(self, request, queryset):
+        from .authority import assign_authority
+        count = 0
+        for et in queryset:
+            et.ca_auto_assigned = True
+            et.csirt_auto_assigned = True
+            et.save(update_fields=["ca_auto_assigned", "csirt_auto_assigned"])
+            assign_authority(et)
+            count += 1
+        messages.success(request, f"Re-assigned authority for {count} entity type(s).")
 
 
 @admin.register(Entity)

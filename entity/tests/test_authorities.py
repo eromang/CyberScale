@@ -319,3 +319,39 @@ class AssessmentAuthorityTest(TestCase):
             entity_type_obj=self.et,
         )
         assert result["authority_override"] is True
+
+
+from django.test import Client as TestClient
+
+
+class AdminAuthorityTest(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser("authadmin", "admin@test.com", "adminpass123")
+        self.client = TestClient()
+        self.client.login(username="authadmin", password="adminpass123")
+        call_command("seed_authorities")
+
+    def test_ca_admin_loads(self):
+        resp = self.client.get("/admin/entity/competentauthority/")
+        assert resp.status_code == 200
+        assert b"ILR" in resp.content
+
+    def test_csirt_admin_loads(self):
+        resp = self.client.get("/admin/entity/csirt/")
+        assert resp.status_code == 200
+        assert b"CIRCL" in resp.content
+
+    def test_entitytype_admin_shows_authority(self):
+        user = User.objects.create_user("etadmin", password="testpass123")
+        entity = Entity.objects.create(
+            user=user, organisation_name="ET Admin Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+        et = EntityType.objects.create(
+            entity=entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        resp = self.client.get("/admin/entity/entitytype/")
+        assert resp.status_code == 200
+        assert b"ILR" in resp.content
