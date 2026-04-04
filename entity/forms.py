@@ -236,3 +236,26 @@ class EntityProfileForm(forms.ModelForm):
         if errors:
             raise forms.ValidationError(errors)
         return ranges
+
+
+class EarlyWarningForm(forms.Form):
+    """Art. 23(4)(a) early warning submission form."""
+
+    suspected_malicious = forms.BooleanField(required=False, label="Suspected malicious activity")
+    cross_border_impact = forms.BooleanField(required=False, label="Cross-border impact")
+    initial_assessment = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 6, "placeholder": "Describe the incident: what happened, what systems are affected, current status..."}),
+        label="Initial assessment",
+    )
+    support_requested = forms.BooleanField(required=False, label="Request CSIRT support")
+    support_description = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Describe the support needed (e.g., forensic analysis, containment assistance)..."}),
+        required=False,
+        label="Support description",
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("support_requested") and not cleaned.get("support_description", "").strip():
+            self.add_error("support_description", "Please describe the support needed.")
+        return cleaned

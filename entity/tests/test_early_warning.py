@@ -116,3 +116,57 @@ class MISPPushHelpersTest(TestCase):
             tags = get_event_tags("https://bad.example.org", "key", "5")
 
         assert tags == []
+
+
+class EarlyWarningFormTest(TestCase):
+    def test_form_fields_exist(self):
+        from entity.forms import EarlyWarningForm
+        form = EarlyWarningForm()
+        assert "suspected_malicious" in form.fields
+        assert "cross_border_impact" in form.fields
+        assert "initial_assessment" in form.fields
+        assert "support_requested" in form.fields
+        assert "support_description" in form.fields
+
+    def test_form_requires_initial_assessment(self):
+        from entity.forms import EarlyWarningForm
+        form = EarlyWarningForm(data={
+            "suspected_malicious": True,
+            "cross_border_impact": False,
+            "initial_assessment": "",
+        })
+        assert not form.is_valid()
+        assert "initial_assessment" in form.errors
+
+    def test_form_valid_without_support(self):
+        from entity.forms import EarlyWarningForm
+        form = EarlyWarningForm(data={
+            "suspected_malicious": True,
+            "cross_border_impact": False,
+            "initial_assessment": "SCADA compromise detected.",
+            "support_requested": False,
+        })
+        assert form.is_valid(), form.errors
+
+    def test_form_requires_support_description_when_requested(self):
+        from entity.forms import EarlyWarningForm
+        form = EarlyWarningForm(data={
+            "suspected_malicious": True,
+            "cross_border_impact": False,
+            "initial_assessment": "Incident detected.",
+            "support_requested": True,
+            "support_description": "",
+        })
+        assert not form.is_valid()
+        assert "support_description" in form.errors
+
+    def test_form_valid_with_support(self):
+        from entity.forms import EarlyWarningForm
+        form = EarlyWarningForm(data={
+            "suspected_malicious": True,
+            "cross_border_impact": True,
+            "initial_assessment": "Incident detected.",
+            "support_requested": True,
+            "support_description": "Need forensic analysis support.",
+        })
+        assert form.is_valid(), form.errors
