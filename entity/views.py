@@ -403,32 +403,57 @@ def early_warning_view(request, pk):
                     {"object_relation": "support-description", "type": "text", "value": form.cleaned_data["support_description"]},
                 )
 
-            # Add early warning object to event dict
-            event_dict["Event"]["Object"].append(ew_object)
+            # Check if assessment was already pushed to MISP
+            existing_push = assessment.submissions.filter(target="misp_push", status="success").first()
 
-            # Add early warning + lifecycle tags
-            event_dict["Event"]["Tag"].append({"name": 'nis2:notification-stage="early-warning"'})
-            event_dict["Event"]["Tag"].append({"name": 'cyberscale:notification-status="received"'})
-            if form.cleaned_data["support_requested"]:
-                event_dict["Event"]["Tag"].append({"name": 'cyberscale:support-requested="true"'})
+            if existing_push and existing_push.misp_event_id:
+                # Add early warning object to existing MISP event
+                result = add_object_to_event(misp_url, misp_key, existing_push.misp_event_id, ew_object, ssl=ssl)
 
-            # Push the complete event (assessment + early warning) to MISP
-            result = push_event(misp_url, misp_key, event_dict, ssl=ssl)
+                if result["success"]:
+                    # Add lifecycle tags to existing event
+                    tags_to_add = [
+                        'nis2:notification-stage="early-warning"',
+                        'cyberscale:notification-status="received"',
+                    ]
+                    if form.cleaned_data["support_requested"]:
+                        tags_to_add.append('cyberscale:support-requested="true"')
+                    for tag in tags_to_add:
+                        update_event_tags(misp_url, misp_key, existing_push.misp_event_id, add_tag=tag, ssl=ssl)
 
-            if result["success"]:
-                Submission.objects.create(
-                    assessment=assessment, target="misp_push", status="success",
-                    misp_event_id=result["event_id"] or "",
-                )
-                Submission.objects.create(
-                    assessment=assessment, target="early_warning", status="success",
-                )
-                messages.success(request, f"Early warning submitted to MISP. Deadline: {deadline} from now.")
+                    Submission.objects.create(
+                        assessment=assessment, target="early_warning", status="success",
+                    )
+                    messages.success(request, f"Early warning submitted to MISP. Deadline: {deadline} from now.")
+                else:
+                    Submission.objects.create(
+                        assessment=assessment, target="early_warning", status="failed",
+                    )
+                    messages.error(request, f"Early warning submission failed: {result['error']}")
             else:
-                Submission.objects.create(
-                    assessment=assessment, target="early_warning", status="failed",
-                )
-                messages.error(request, f"Early warning submission failed: {result['error']}")
+                # No existing event — create new event with assessment + early warning
+                event_dict["Event"]["Object"].append(ew_object)
+                event_dict["Event"]["Tag"].append({"name": 'nis2:notification-stage="early-warning"'})
+                event_dict["Event"]["Tag"].append({"name": 'cyberscale:notification-status="received"'})
+                if form.cleaned_data["support_requested"]:
+                    event_dict["Event"]["Tag"].append({"name": 'cyberscale:support-requested="true"'})
+
+                result = push_event(misp_url, misp_key, event_dict, ssl=ssl)
+
+                if result["success"]:
+                    Submission.objects.create(
+                        assessment=assessment, target="misp_push", status="success",
+                        misp_event_id=result["event_id"] or "",
+                    )
+                    Submission.objects.create(
+                        assessment=assessment, target="early_warning", status="success",
+                    )
+                    messages.success(request, f"Early warning submitted to MISP. Deadline: {deadline} from now.")
+                else:
+                    Submission.objects.create(
+                        assessment=assessment, target="early_warning", status="failed",
+                    )
+                    messages.error(request, f"Early warning submission failed: {result['error']}")
 
             return redirect("assessment_result", pk=pk)
     else:
