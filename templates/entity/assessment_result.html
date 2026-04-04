@@ -159,6 +159,12 @@
       <a href="{% url 'assessment_misp_json' assessment.pk %}?type_index={{ forloop.counter0 }}" role="button" class="outline" style="font-size:0.8rem;">MISP: {{ r.sector|title }}</a>
     {% endfor %}
   {% endif %}
+  {% if not ew_submitted %}
+    <form method="post" action="{% url 'delete_assessment' assessment.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="outline" style="color:var(--cs-significant);" onclick="return confirm('Delete this assessment? This cannot be undone.')">Delete</button>
+    </form>
+  {% endif %}
   <a href="{% url 'dashboard' %}" role="button" class="outline">Back to Dashboard</a>
 </div>
 

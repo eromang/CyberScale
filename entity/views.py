@@ -278,8 +278,22 @@ def delete_draft_view(request, pk):
     draft = get_object_or_404(Assessment, pk=pk, entity=entity, status="draft")
     if request.method == "POST":
         draft.delete()
-        from django.contrib import messages
         messages.success(request, "Draft deleted.")
+    return redirect("dashboard")
+
+
+@login_required
+@require_POST
+def delete_assessment_view(request, pk):
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
+    assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
+    if assessment.submissions.filter(target="early_warning").exists():
+        messages.error(request, "Cannot delete an assessment with a submitted early warning.")
+        return redirect("assessment_result", pk=pk)
+    assessment.delete()
+    messages.success(request, f"Assessment #{pk} deleted.")
     return redirect("dashboard")
 
 
