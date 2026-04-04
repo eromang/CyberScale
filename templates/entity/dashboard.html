@@ -62,6 +62,7 @@
           <th>Description</th>
           <th>Status</th>
           <th>Types</th>
+          <th>Notification</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -87,6 +88,17 @@
               <small>{{ a.affected_entity_types|length }} type{{ a.affected_entity_types|length|pluralize }}</small>
             {% else %}
               <small>{{ a.sector }}/{{ a.entity_type }}</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.status == "draft" %}
+              —
+            {% elif a.has_early_warning %}
+              <span class="badge badge-model">EW SENT</span>
+            {% elif a.result_early_warning.recommended %}
+              <span class="badge badge-significant" style="font-size:0.7rem;">EW PENDING</span>
+            {% else %}
+              —
             {% endif %}
           </td>
           <td>

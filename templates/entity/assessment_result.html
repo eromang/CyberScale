@@ -131,16 +131,28 @@
 {# Early warning status / submit button #}
 {% if ew_submitted %}
 <div class="cs-card">
-  <h3>Early Warning Status</h3>
-  {% if ew_status %}
-    <p><span class="badge badge-model">{{ ew_status|upper }}</span></p>
-  {% else %}
-    <p><span class="badge badge-undetermined">STATUS UNAVAILABLE</span></p>
-  {% endif %}
+  <h3>Notification Lifecycle — Art. 23</h3>
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>Early Warning (24h)</strong></td>
+        <td>
+          {% if ew_status %}
+            <span class="badge badge-model">{{ ew_status|upper }}</span>
+          {% else %}
+            <span class="badge badge-undetermined">STATUS UNAVAILABLE</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr><td><strong>Incident Notification (72h)</strong></td><td><span class="badge badge-draft">PENDING</span></td></tr>
+      <tr><td><strong>Intermediate Report</strong></td><td><span class="badge badge-draft">—</span></td></tr>
+      <tr><td><strong>Final Report (1 month)</strong></td><td><span class="badge badge-draft">—</span></td></tr>
+    </tbody>
+  </table>
   {% if ew_support_requested %}
     <p><strong>CSIRT Support:</strong> Requested</p>
   {% endif %}
-  <p><small>Submitted. Follow up with incident notification within 72 hours per Art. 23(4)(b).</small></p>
+  <p><small>Next step: submit incident notification within 72 hours per Art. 23(4)(b).</small></p>
 </div>
 {% elif ew_recommended %}
 <div class="cs-card" style="border-left: 3px solid var(--cs-significant);">

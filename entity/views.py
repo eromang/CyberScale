@@ -126,7 +126,14 @@ def dashboard_view(request):
     entity = _get_entity_or_redirect(request)
     if entity is None:
         return redirect("register")
-    assessments = entity.assessments.all()[:20]
+    from django.db.models import Exists, OuterRef
+    assessments = entity.assessments.annotate(
+        has_early_warning=Exists(
+            Submission.objects.filter(
+                assessment=OuterRef("pk"), target="early_warning", status="success"
+            )
+        ),
+    )[:20]
     from .forms import _sector_choices
     return render(request, "entity/dashboard.html", {
         "entity": entity,
