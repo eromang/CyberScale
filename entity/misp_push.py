@@ -112,7 +112,7 @@ def update_event_tags(
         if remove_prefix:
             for tag in existing_tags:
                 if tag["name"].startswith(remove_prefix):
-                    misp.direct_call(f"tags/removeTagFromEvent/{event_id}/{tag['id']}")
+                    misp.direct_call("events/removeTag", {"event": event_id, "tag": tag["name"]})
 
         if add_tag:
             misp.direct_call("events/addTag", {"event": event_id, "tag": add_tag})

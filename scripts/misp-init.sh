@@ -68,8 +68,28 @@ else
     echo "  WARNING: $CUSTOM_DIR not found. Mount data/misp-objects/ to /misp-objects/."
 fi
 
+# Create lifecycle tags
+echo "[5/6] Creating lifecycle tags..."
+TAGS=(
+    'cyberscale:notification-status="received"'
+    'cyberscale:notification-status="acknowledged"'
+    'cyberscale:notification-status="under-review"'
+    'cyberscale:notification-status="support-dispatched"'
+    'cyberscale:notification-status="closed"'
+    'nis2:notification-stage="early-warning"'
+    'cyberscale:support-requested="true"'
+)
+for TAG in "${TAGS[@]}"; do
+    curl -sk "https://localhost/tags/add" \
+        -H "Authorization: $API_KEY" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        -d "{\"Tag\":{\"name\":\"$TAG\",\"colour\":\"#0088cc\"}}" > /dev/null 2>&1
+done
+echo "  Created ${#TAGS[@]} lifecycle tags"
+
 # Output configuration
-echo "[5/5] Done."
+echo "[6/6] Done."
 echo ""
 echo "==============================="
 echo "MISP API Key: $API_KEY"
