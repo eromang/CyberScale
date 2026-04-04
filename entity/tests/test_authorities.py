@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from entity.models import CompetentAuthority, CSIRT, Entity, EntityType
+from entity.authority import assign_authority
 
 
 class CompetentAuthorityModelTest(TestCase):
@@ -145,3 +146,109 @@ class SeedAuthoritiesTest(TestCase):
         assert circl.receives_notifications is False
         cert_be = CSIRT.objects.get(abbreviation="CERT.be", ms="BE")
         assert cert_be.receives_notifications is True
+
+
+class AutoAssignmentTest(TestCase):
+    def setUp(self):
+        call_command("seed_authorities")
+        self.user = User.objects.create_user("assigntest", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user, organisation_name="Assign Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+
+    def test_assign_lu_energy(self):
+        et = EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "ILR"
+        assert et.csirt.abbreviation == "CIRCL"
+        assert et.ca_auto_assigned is True
+        assert et.csirt_auto_assigned is True
+
+    def test_assign_lu_banking_gets_cssf(self):
+        et = EntityType.objects.create(
+            entity=self.entity, sector="banking", entity_type="credit_institution",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "CSSF"
+
+    def test_assign_be_energy_gets_ccb(self):
+        user2 = User.objects.create_user("beuser", password="testpass123")
+        be_entity = Entity.objects.create(
+            user=user2, organisation_name="BE Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="BE",
+        )
+        et = EntityType.objects.create(
+            entity=be_entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "CCB"
+        assert et.csirt.abbreviation == "CERT.be"
+
+    def test_assign_be_banking_gets_bnb(self):
+        user3 = User.objects.create_user("bebank", password="testpass123")
+        be_entity = Entity.objects.create(
+            user=user3, organisation_name="BE Bank",
+            sector="banking", entity_type="credit_institution",
+            ms_established="BE",
+        )
+        et = EntityType.objects.create(
+            entity=be_entity, sector="banking", entity_type="credit_institution",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "BNB"
+
+    def test_specific_sector_wins_over_wildcard(self):
+        user4 = User.objects.create_user("priority", password="testpass123")
+        be_entity = Entity.objects.create(
+            user=user4, organisation_name="Priority Bank",
+            sector="banking", entity_type="credit_institution",
+            ms_established="BE",
+        )
+        et = EntityType.objects.create(
+            entity=be_entity, sector="banking", entity_type="credit_institution",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "BNB"
+
+    def test_unknown_ms_no_assignment(self):
+        user5 = User.objects.create_user("fruser", password="testpass123")
+        fr_entity = Entity.objects.create(
+            user=user5, organisation_name="FR Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="FR",
+        )
+        et = EntityType.objects.create(
+            entity=fr_entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority is None
+        assert et.csirt is None
+
+    def test_manual_override_persists(self):
+        et = EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "ILR"
+
+        cssf = CompetentAuthority.objects.get(abbreviation="CSSF", ms="LU")
+        et.competent_authority = cssf
+        et.ca_auto_assigned = False
+        et.save()
+
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.competent_authority.abbreviation == "CSSF"
+        assert et.ca_auto_assigned is False

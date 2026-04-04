@@ -12,8 +12,17 @@ class Command(BaseCommand):
     help = "Set up the CyberScale playground (superuser + entity + MISP check)"
 
     def handle(self, *args, **options):
+        self._seed_authorities()
         self._create_superuser()
         self._check_misp()
+
+    def _seed_authorities(self):
+        from django.core.management import call_command
+        call_command("seed_authorities")
+        from entity.models import EntityType
+        from entity.authority import assign_authority
+        for et in EntityType.objects.filter(competent_authority__isnull=True, ca_auto_assigned=True):
+            assign_authority(et)
 
     def _create_superuser(self):
         if User.objects.filter(is_superuser=True).exists():

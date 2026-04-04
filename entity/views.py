@@ -84,11 +84,13 @@ def register_view(request):
                 entity_type=form.cleaned_data["entity_type"],
                 ms_established=form.cleaned_data["ms_established"],
             )
-            EntityType.objects.create(
+            et = EntityType.objects.create(
                 entity=entity,
                 sector=form.cleaned_data["sector"],
                 entity_type=form.cleaned_data["entity_type"],
             )
+            from .authority import assign_authority
+            assign_authority(et)
             login(request, user)
             return redirect("dashboard")
     else:
@@ -407,9 +409,12 @@ def add_entity_type_view(request):
     sector = request.POST.get("sector", "")
     etype = request.POST.get("entity_type", "")
     if sector and etype:
-        EntityType.objects.get_or_create(
+        et_obj, created = EntityType.objects.get_or_create(
             entity=entity, entity_type=etype, defaults={"sector": sector}
         )
+        if created:
+            from .authority import assign_authority
+            assign_authority(et_obj)
     if request.headers.get("HX-Request"):
         types = entity.entity_types.all()
         return render(request, "entity/partials/entity_types.html", {"entity_types": types})
