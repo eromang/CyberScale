@@ -47,6 +47,14 @@ def push_event(misp_url: str, misp_api_key: str, event_dict: dict, ssl: bool = T
             event_id = str(response.id) if hasattr(response, "id") else ""
             event_uuid = str(response.uuid) if hasattr(response, "uuid") else ""
 
+        # Publish event so it's eligible for MISP sync
+        if event_id:
+            try:
+                misp.publish(event_id)
+                logger.info("MISP event published: event_id=%s", event_id)
+            except Exception as pub_exc:
+                logger.warning("MISP publish failed (event still created): %s", pub_exc)
+
         logger.info("MISP push successful: event_id=%s uuid=%s", event_id, event_uuid)
         return {"success": True, "event_id": event_id, "event_uuid": event_uuid, "error": None}
 
@@ -145,7 +153,7 @@ def _dict_to_misp_event(event_data: dict) -> MISPEvent:
     event.date = event_data.get("date") or date.today().isoformat()
     event.threat_level_id = int(event_data.get("threat_level_id", 2))
     event.analysis = int(event_data.get("analysis", 2))
-    event.distribution = int(event_data.get("distribution", 1))
+    event.distribution = int(event_data.get("distribution", 3))
 
     if event_data.get("uuid"):
         event.uuid = event_data["uuid"]

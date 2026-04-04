@@ -88,7 +88,7 @@ class MISPSyncProfileTest(TestCase):
                 "uuid": event_uuid,
                 "threat_level_id": "4",
                 "analysis": "2",
-                "distribution": "1",
+                "distribution": "3",
                 "Tag": [{"name": "tlp:amber"}],
                 "Object": [{
                     "name": "cyberscale-entity-profile",
@@ -129,7 +129,7 @@ class MISPSyncAssessmentTest(TestCase):
                 "uuid": event_uuid,
                 "threat_level_id": "1",
                 "analysis": "2",
-                "distribution": "1",
+                "distribution": "3",
                 "Tag": [
                     {"name": "tlp:amber"},
                     {"name": 'nis2:notification-stage="early-warning"'},
@@ -188,7 +188,7 @@ class MISPSyncTagUpdateTest(TestCase):
                 "uuid": event_uuid,
                 "threat_level_id": "1",
                 "analysis": "2",
-                "distribution": "1",
+                "distribution": "3",
                 "Tag": [{"name": 'cyberscale:notification-status="received"'}],
                 "Object": [],
             }
@@ -232,7 +232,7 @@ class MISPSyncFeedbackTest(TestCase):
                 "uuid": event_uuid,
                 "threat_level_id": "2",
                 "analysis": "2",
-                "distribution": "1",
+                "distribution": "3",
                 "Tag": [{"name": "tlp:green"}],
                 "Object": [],
             }

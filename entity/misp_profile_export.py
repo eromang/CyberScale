@@ -40,7 +40,7 @@ def build_misp_profile_event(entity) -> dict:
             "info": f"CyberScale entity profile: {entity.organisation_name}",
             "threat_level_id": "4",
             "analysis": "2",
-            "distribution": "1",
+            "distribution": "3",
             "uuid": event_uuid,
             "Tag": [
                 {"name": 'cyberscale:type="entity-profile"'},

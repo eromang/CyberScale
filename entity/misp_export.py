@@ -80,7 +80,7 @@ def build_misp_event(assessment, entity, profile_event_uuid: str = "") -> dict:
             "date": assessment.created_at.strftime("%Y-%m-%d"),
             "threat_level_id": threat_level_id,
             "analysis": "2",
-            "distribution": "1",
+            "distribution": "3",
             "uuid": event_uuid,
             "Tag": [
                 {"name": 'cyberscale:phase="phase-2"'},
@@ -160,7 +160,7 @@ def build_misp_event_for_type(assessment, entity, type_result: dict, profile_eve
             "date": assessment.created_at.strftime("%Y-%m-%d"),
             "threat_level_id": threat_level_id,
             "analysis": "2",
-            "distribution": "1",
+            "distribution": "3",
             "uuid": event_uuid,
             "Tag": [
                 {"name": 'cyberscale:phase="phase-2"'},
@@ -256,7 +256,7 @@ def build_misp_event_global(assessment, entity, profile_event_uuid: str = "") ->
             "date": assessment.created_at.strftime("%Y-%m-%d"),
             "threat_level_id": threat_level_id,
             "analysis": "2",
-            "distribution": "1",
+            "distribution": "3",
             "uuid": event_uuid,
             "Tag": [
                 {"name": 'cyberscale:phase="phase-2"'},
