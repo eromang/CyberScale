@@ -484,3 +484,33 @@ class CERDesignationTest(TestCase):
             ms_established="LU",
         )
         assert entity.cer_designated is False
+
+    def test_public_administration_gets_govcert(self):
+        user4 = User.objects.create_user("pubadmin", password="testpass123")
+        entity = Entity.objects.create(
+            user=user4, organisation_name="Ministry of Digital",
+            sector="public_administration", entity_type="central_government_entity",
+            ms_established="LU",
+        )
+        et = EntityType.objects.create(
+            entity=entity, sector="public_administration",
+            entity_type="central_government_entity",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.csirt.abbreviation == "GOVCERT.LU"
+
+    def test_public_administration_be_not_affected(self):
+        user5 = User.objects.create_user("pubadminbe", password="testpass123")
+        entity = Entity.objects.create(
+            user=user5, organisation_name="BE Ministry",
+            sector="public_administration", entity_type="central_government_entity",
+            ms_established="BE",
+        )
+        et = EntityType.objects.create(
+            entity=entity, sector="public_administration",
+            entity_type="central_government_entity",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.csirt.abbreviation == "CERT.be"
