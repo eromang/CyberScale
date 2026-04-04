@@ -240,16 +240,11 @@ class EarlyWarningViewTest(TestCase):
         assert resp.status_code == 404
 
     def test_submit_creates_submission(self):
-        # Need a misp_push submission so the view can find the event_id
-        Submission.objects.create(
-            assessment=self.assessment, target="misp_push", status="success",
-            misp_event_id="42",
-        )
-
-        with patch("entity.misp_push.add_object_to_event") as mock_add, \
-             patch("entity.misp_push.update_event_tags") as mock_tags:
-            mock_add.return_value = {"success": True, "object_id": "10", "error": None}
-            mock_tags.return_value = {"success": True, "error": None}
+        with patch("entity.misp_push.push_event") as mock_push:
+            mock_push.return_value = {
+                "success": True, "event_id": "42",
+                "event_uuid": "test-uuid", "error": None,
+            }
 
             resp = self.client.post(f"/assess/{self.assessment.pk}/early-warning/", {
                 "suspected_malicious": "on",
@@ -260,6 +255,10 @@ class EarlyWarningViewTest(TestCase):
         sub = Submission.objects.filter(target="early_warning", assessment=self.assessment).first()
         assert sub is not None
         assert sub.status == "success"
+        # Also creates misp_push submission
+        push_sub = Submission.objects.filter(target="misp_push", assessment=self.assessment).first()
+        assert push_sub is not None
+        assert push_sub.misp_event_id == "42"
 
     def test_submit_blocked_when_already_submitted(self):
         Submission.objects.create(
@@ -269,18 +268,8 @@ class EarlyWarningViewTest(TestCase):
         assert resp.status_code == 302  # redirects back to result
 
     def test_result_page_shows_submit_button(self):
-        # Assessment must be pushed to MISP first
-        Submission.objects.create(
-            assessment=self.assessment, target="misp_push", status="success",
-            misp_event_id="99",
-        )
         resp = self.client.get(f"/assess/{self.assessment.pk}/")
         assert b"Submit Early Warning" in resp.content
-
-    def test_result_page_shows_pending_when_not_pushed(self):
-        resp = self.client.get(f"/assess/{self.assessment.pk}/")
-        assert b"must be pushed to MISP" in resp.content
-        assert b"Submit Early Warning" not in resp.content
 
     def test_result_page_hides_button_when_submitted(self):
         Submission.objects.create(

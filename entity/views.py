@@ -292,7 +292,6 @@ def assessment_result_view(request, pk):
 
     ew_submitted = assessment.submissions.filter(target="early_warning", status="success").exists()
     ew_recommended = assessment.result_early_warning.get("recommended", False)
-    ew_pushed_to_misp = assessment.submissions.filter(target="misp_push", status="success").exists()
 
     ew_status = ""
     ew_support_requested = False
@@ -314,7 +313,6 @@ def assessment_result_view(request, pk):
         "assessment": assessment,
         "ew_submitted": ew_submitted,
         "ew_recommended": ew_recommended,
-        "ew_pushed_to_misp": ew_pushed_to_misp,
         "ew_status": ew_status,
         "ew_support_requested": ew_support_requested,
     })
@@ -341,17 +339,41 @@ def early_warning_view(request, pk):
     if request.method == "POST":
         form = EarlyWarningForm(request.POST)
         if form.is_valid():
-            from .misp_push import add_object_to_event, update_event_tags
+            from .misp_push import push_event, add_object_to_event, update_event_tags
+            from .misp_export import build_misp_event_global, build_misp_event
             import os
+            import uuid as uuid_mod
 
             deadline = "4h" if "DORA" in (assessment.result_framework or "") else "24h"
             now = timezone.now()
 
+            misp_url = entity.misp_instance_url
+            misp_key = entity.misp_api_key
+            ssl = os.environ.get("MISP_SSL_VERIFY", "").lower() not in ("0", "false", "no", "")
+
+            if not misp_url or not misp_key:
+                messages.error(request, "MISP instance URL and API key must be configured.")
+                return redirect("assessment_result", pk=pk)
+
+            # Ensure assessment has a UUID
+            if not assessment.misp_event_uuid:
+                assessment.misp_event_uuid = str(uuid_mod.uuid4())
+                assessment.save(update_fields=["misp_event_uuid"])
+
+            # Build the assessment event with all data
+            profile_uuid = entity.misp_profile_event_uuid or ""
+            if assessment.assessment_results:
+                event_dict = build_misp_event_global(assessment, entity, profile_event_uuid=profile_uuid)
+            else:
+                event_dict = build_misp_event(assessment, entity, profile_event_uuid=profile_uuid)
+
+            # Add early warning object to the event
             ew_object = {
                 "name": "cyberscale-early-warning",
                 "meta-category": "misc",
                 "template_uuid": "c5e0f001-e27a-4f00-a000-000000000003",
                 "template_version": "1",
+                "uuid": str(uuid_mod.uuid4()),
                 "Attribute": [
                     {"object_relation": "submission-timestamp", "type": "datetime", "value": now.strftime("%Y-%m-%dT%H:%M:%S+0000")},
                     {"object_relation": "deadline", "type": "text", "value": deadline},
@@ -367,34 +389,27 @@ def early_warning_view(request, pk):
                     {"object_relation": "support-description", "type": "text", "value": form.cleaned_data["support_description"]},
                 )
 
-            misp_url = entity.misp_instance_url
-            misp_key = entity.misp_api_key
-            ssl = os.environ.get("MISP_SSL_VERIFY", "").lower() not in ("0", "false", "no", "")
+            # Add early warning object to event dict
+            event_dict["Event"]["Object"].append(ew_object)
 
-            push_sub = assessment.submissions.filter(target="misp_push", status="success").first()
-            event_id = push_sub.misp_event_id if push_sub else ""
+            # Add early warning + lifecycle tags
+            event_dict["Event"]["Tag"].append({"name": 'nis2:notification-stage="early-warning"'})
+            event_dict["Event"]["Tag"].append({"name": 'cyberscale:notification-status="received"'})
+            if form.cleaned_data["support_requested"]:
+                event_dict["Event"]["Tag"].append({"name": 'cyberscale:support-requested="true"'})
 
-            if not event_id or not misp_url or not misp_key:
-                messages.error(request, "Assessment must be pushed to MISP before submitting early warning.")
-                return redirect("assessment_result", pk=pk)
-
-            result = add_object_to_event(misp_url, misp_key, event_id, ew_object, ssl=ssl)
+            # Push the complete event (assessment + early warning) to MISP
+            result = push_event(misp_url, misp_key, event_dict, ssl=ssl)
 
             if result["success"]:
-                tags_to_add = [
-                    'nis2:notification-stage="early-warning"',
-                    'cyberscale:notification-status="received"',
-                ]
-                if form.cleaned_data["support_requested"]:
-                    tags_to_add.append('cyberscale:support-requested="true"')
-
-                for tag in tags_to_add:
-                    update_event_tags(misp_url, misp_key, event_id, add_tag=tag, ssl=ssl)
-
+                Submission.objects.create(
+                    assessment=assessment, target="misp_push", status="success",
+                    misp_event_id=result["event_id"] or "",
+                )
                 Submission.objects.create(
                     assessment=assessment, target="early_warning", status="success",
                 )
-                messages.success(request, f"Early warning submitted. Deadline: {deadline} from now.")
+                messages.success(request, f"Early warning submitted to MISP. Deadline: {deadline} from now.")
             else:
                 Submission.objects.create(
                     assessment=assessment, target="early_warning", status="failed",
