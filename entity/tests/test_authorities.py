@@ -1,6 +1,7 @@
 """Tests for authority and CSIRT registry."""
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import TestCase
 
@@ -102,3 +103,45 @@ class EntityTypeFKTest(TestCase):
         self.ca.delete()
         et.refresh_from_db()
         assert et.competent_authority is None
+
+
+class SeedAuthoritiesTest(TestCase):
+    def test_seed_creates_authorities(self):
+        call_command("seed_authorities")
+        assert CompetentAuthority.objects.filter(abbreviation="ILR", ms="LU").exists()
+        assert CompetentAuthority.objects.filter(abbreviation="CSSF", ms="LU").exists()
+        assert CompetentAuthority.objects.filter(abbreviation="CCB", ms="BE").exists()
+        assert CompetentAuthority.objects.filter(abbreviation="BNB", ms="BE").exists()
+
+    def test_seed_creates_csirts(self):
+        call_command("seed_authorities")
+        assert CSIRT.objects.filter(abbreviation="CIRCL", ms="LU").exists()
+        assert CSIRT.objects.filter(abbreviation="GOVCERT.LU", ms="LU").exists()
+        assert CSIRT.objects.filter(abbreviation="CERT.be", ms="BE").exists()
+
+    def test_seed_idempotent(self):
+        call_command("seed_authorities")
+        count_ca = CompetentAuthority.objects.count()
+        count_csirt = CSIRT.objects.count()
+        call_command("seed_authorities")
+        assert CompetentAuthority.objects.count() == count_ca
+        assert CSIRT.objects.count() == count_csirt
+
+    def test_seed_updates_contact(self):
+        CompetentAuthority.objects.create(
+            abbreviation="ILR", name="Old Name", ms="LU",
+            sectors=["energy"], receives_notifications=False,
+        )
+        call_command("seed_authorities")
+        ilr = CompetentAuthority.objects.get(abbreviation="ILR", ms="LU")
+        assert ilr.name == "Institut Luxembourgeois de Régulation"
+        assert ilr.receives_notifications is True
+
+    def test_seed_notification_flags(self):
+        call_command("seed_authorities")
+        ilr = CompetentAuthority.objects.get(abbreviation="ILR", ms="LU")
+        assert ilr.receives_notifications is True
+        circl = CSIRT.objects.get(abbreviation="CIRCL", ms="LU")
+        assert circl.receives_notifications is False
+        cert_be = CSIRT.objects.get(abbreviation="CERT.be", ms="BE")
+        assert cert_be.receives_notifications is True

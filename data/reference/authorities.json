@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "competent_authorities": [
+    {
+      "abbreviation": "ILR",
+      "name": "Institut Luxembourgeois de Régulation",
+      "ms": "LU",
+      "sectors": ["energy", "transport", "drinking_water", "health",
+                   "digital_infrastructure", "ict_service_management",
+                   "space", "waste_water", "postal_courier",
+                   "chemicals", "food", "manufacturing",
+                   "digital_providers", "research"],
+      "website": "https://web.ilr.lu",
+      "notification_url": "",
+      "contact_email": "",
+      "contact_phone": "",
+      "receives_notifications": true
+    },
+    {
+      "abbreviation": "CSSF",
+      "name": "Commission de Surveillance du Secteur Financier",
+      "ms": "LU",
+      "sectors": ["banking", "financial_market"],
+      "website": "https://www.cssf.lu",
+      "notification_url": "",
+      "contact_email": "",
+      "contact_phone": "",
+      "receives_notifications": true
+    },
+    {
+      "abbreviation": "CCB",
+      "name": "Centre for Cybersecurity Belgium",
+      "ms": "BE",
+      "sectors": ["*"],
+      "website": "https://ccb.belgium.be",
+      "notification_url": "",
+      "contact_email": "",
+      "contact_phone": "",
+      "receives_notifications": true
+    },
+    {
+      "abbreviation": "BNB",
+      "name": "Banque Nationale de Belgique",
+      "ms": "BE",
+      "sectors": ["banking", "financial_market"],
+      "website": "https://www.nbb.be",
+      "notification_url": "",
+      "contact_email": "",
+      "contact_phone": "",
+      "receives_notifications": true
+    }
+  ],
+  "csirts": [
+    {
+      "abbreviation": "CIRCL",
+      "name": "Computer Incident Response Center Luxembourg",
+      "ms": "LU",
+      "website": "https://www.circl.lu",
+      "notification_url": "",
+      "contact_email": "info@circl.lu",
+      "contact_phone": "",
+      "emergency_phone": "+352 247 88444",
+      "receives_notifications": false
+    },
+    {
+      "abbreviation": "GOVCERT.LU",
+      "name": "GOVCERT.LU",
+      "ms": "LU",
+      "website": "https://www.govcert.lu",
+      "notification_url": "",
+      "contact_email": "",
+      "contact_phone": "",
+      "emergency_phone": "",
+      "receives_notifications": false
+    },
+    {
+      "abbreviation": "CERT.be",
+      "name": "CERT.be",
+      "ms": "BE",
+      "website": "https://cert.be",
+      "notification_url": "https://notif.safeonweb.be",
+      "contact_email": "cert@cert.be",
+      "contact_phone": "",
+      "emergency_phone": "+32 2 501 05 60",
+      "receives_notifications": true
+    }
+  ]
+}
