@@ -62,6 +62,8 @@
     <tr><th>Model</th><td>{{ r.model }}</td></tr>
     {% if r.framework %}<tr><th>Framework</th><td>{{ r.framework }}</td></tr>{% endif %}
     {% if r.competent_authority %}<tr><th>Competent authority</th><td>{{ r.competent_authority }}</td></tr>{% endif %}
+    {% if r.csirt %}<tr><th>CSIRT</th><td>{{ r.csirt }}</td></tr>{% endif %}
+    {% if r.notification_recipient %}<tr><th>Notification recipient</th><td>{{ r.notification_recipient }}</td></tr>{% endif %}
   </table>
   {% if r.triggered_criteria %}
   <ul class="criteria-list">
@@ -128,6 +130,15 @@
     <tr><th>Affected persons</th><td>{{ assessment.affected_persons_count|default:"0" }}</td></tr>
     <tr><th>Suspected malicious</th><td>{% if assessment.suspected_malicious %}Yes{% else %}No{% endif %}</td></tr>
   </table>
+{% endif %}
+
+{% if ew_submitted %}
+<h2>Art. 23 Early Warning — Notification Status</h2>
+<table>
+  <tr><th>Status</th><td>Submitted</td></tr>
+  <tr><th>Submitted at</th><td>{{ ew_submission.submitted_at|date:"Y-m-d H:i" }} UTC</td></tr>
+  <tr><th>Deadline</th><td>{% if "DORA" in assessment.result_framework %}4h{% else %}24h{% endif %} from submission</td></tr>
+</table>
 {% endif %}
 
 <h2>Incident Description</h2>

@@ -523,10 +523,14 @@ def assessment_pdf_view(request, pk):
         return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
 
+    ew_submission = assessment.submissions.filter(target="early_warning", status="success").first()
+
     from django.template.loader import render_to_string
     html = render_to_string("entity/assessment_pdf.html", {
         "entity": entity,
         "assessment": assessment,
+        "ew_submitted": ew_submission is not None,
+        "ew_submission": ew_submission,
     })
 
     from weasyprint import HTML
