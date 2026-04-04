@@ -112,13 +112,13 @@ class EntityTypeAdmin(admin.ModelAdmin):
 @admin.register(Entity)
 class EntityAdmin(admin.ModelAdmin):
     list_display = ("organisation_name", "ms_established", "contact_email", "responsible_person_name", "competent_authority")
-    list_filter = ("ms_established",)
+    list_filter = ("ms_established", "cer_designated")
     search_fields = ("organisation_name", "user__username")
     readonly_fields = ("misp_profile_event_uuid",)
     inlines = [EntityTypeInline, AssessmentInline]
     actions = [push_profile_to_misp]
     fieldsets = (
-        ("Organisation", {"fields": ("user", "organisation_name", "address", "ms_established", "competent_authority")}),
+        ("Organisation", {"fields": ("user", "organisation_name", "address", "ms_established", "cer_designated", "competent_authority")}),
         ("General Contact", {"fields": ("contact_email", "contact_phone")}),
         ("Responsible Person", {"fields": ("responsible_person_name", "responsible_person_email")}),
         ("Technical Contact", {"fields": ("technical_contact_name", "technical_contact_email", "technical_contact_phone")}),

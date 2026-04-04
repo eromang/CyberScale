@@ -16,6 +16,7 @@ def assign_authority(entity_type) -> None:
 
     ms = entity_type.entity.ms_established
     sector = entity_type.sector
+    cer_designated = entity_type.entity.cer_designated
 
     if entity_type.ca_auto_assigned:
         ca = _find_ca(ms, sector)
@@ -23,7 +24,7 @@ def assign_authority(entity_type) -> None:
         entity_type.ca_auto_assigned = True
 
     if entity_type.csirt_auto_assigned:
-        csirt = _find_csirt(ms)
+        csirt = _find_csirt(ms, cer_designated)
         entity_type.csirt = csirt
         entity_type.csirt_auto_assigned = True
 
@@ -46,8 +47,16 @@ def _find_ca(ms: str, sector: str):
     return None
 
 
-def _find_csirt(ms: str):
-    """Find the first CSIRT for a given MS."""
+def _find_csirt(ms: str, cer_designated: bool = False):
+    """Find the appropriate CSIRT for a given MS.
+
+    For LU: GOVCERT.LU if entity is CER-designated, CIRCL otherwise.
+    For other MS: first CSIRT found.
+    """
     from .models import CSIRT
 
+    if ms == "LU" and cer_designated:
+        govcert = CSIRT.objects.filter(ms="LU", abbreviation="GOVCERT.LU").first()
+        if govcert:
+            return govcert
     return CSIRT.objects.filter(ms=ms).first()

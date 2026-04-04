@@ -57,6 +57,7 @@ class Entity(models.Model):
     sector = models.CharField(max_length=100)
     entity_type = models.CharField(max_length=100)
     ms_established = models.CharField(max_length=10, default="LU")
+    cer_designated = models.BooleanField(default=False, help_text="Designated as critical entity under CER Directive")
     competent_authority = models.CharField(max_length=100, blank=True)
     misp_instance_url = models.URLField(blank=True)
     misp_api_key = models.CharField(max_length=255, blank=True)

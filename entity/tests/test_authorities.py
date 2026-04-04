@@ -430,3 +430,57 @@ class UIAuthorityTest(TestCase):
         resp = self.client.get(f"/assess/{assessment.pk}/")
         assert resp.status_code == 200
         assert b"ILR" in resp.content
+
+
+class CERDesignationTest(TestCase):
+    def setUp(self):
+        call_command("seed_authorities")
+        self.user = User.objects.create_user("certest", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user, organisation_name="CER Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+            cer_designated=False,
+        )
+
+    def test_non_cer_gets_circl(self):
+        et = EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.csirt.abbreviation == "CIRCL"
+
+    def test_cer_designated_gets_govcert(self):
+        self.entity.cer_designated = True
+        self.entity.save()
+        et = EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.csirt.abbreviation == "GOVCERT.LU"
+
+    def test_cer_only_affects_lu(self):
+        user2 = User.objects.create_user("cerbe", password="testpass123")
+        be_entity = Entity.objects.create(
+            user=user2, organisation_name="CER BE Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="BE",
+            cer_designated=True,
+        )
+        et = EntityType.objects.create(
+            entity=be_entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(et)
+        et.refresh_from_db()
+        assert et.csirt.abbreviation == "CERT.be"
+
+    def test_cer_default_false(self):
+        user3 = User.objects.create_user("cerdefault", password="testpass123")
+        entity = Entity.objects.create(
+            user=user3, organisation_name="Default Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+        assert entity.cer_designated is False
