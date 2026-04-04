@@ -117,3 +117,130 @@ class MISPProfilePushIntegrationTest(TestCase):
 
         result = push_event(MISP_URL, "invalid-key-that-is-40-chars-long-xxxxx", {"Event": {"info": "Bad", "Tag": [], "Object": []}}, ssl=False)
         assert result["success"] is False
+
+
+@requires_misp
+class MISPEarlyWarningLifecycleTest(TestCase):
+    """End-to-end test: push assessment, add early warning object, manage lifecycle tags."""
+
+    def setUp(self):
+        self.user = User.objects.create_user("ewinteg", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user,
+            organisation_name=f"EWInteg-{uuid.uuid4().hex[:8]}",
+            sector="energy",
+            entity_type="electricity_undertaking",
+            ms_established="LU",
+            misp_instance_url=MISP_URL,
+            misp_api_key=MISP_API_KEY,
+        )
+        EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        # Push an assessment event first
+        from entity.misp_export import build_misp_event_global
+        from entity.misp_push import push_event
+
+        self.assessment = Assessment.objects.create(
+            entity=self.entity, status="completed",
+            description="Early warning lifecycle test",
+            sector="energy", entity_type="electricity_undertaking",
+            misp_event_uuid=str(uuid.uuid4()),
+            result_significance_label="SIGNIFICANT",
+            result_model="ir_thresholds",
+            result_competent_authority="ILR",
+            result_framework="NIS2 (ILR)",
+            result_early_warning={"recommended": True, "deadline": "24h"},
+            assessment_results=[{
+                "sector": "energy", "entity_type": "electricity_undertaking",
+                "significance_label": "SIGNIFICANT", "model": "ir_thresholds",
+                "early_warning": {"recommended": True, "deadline": "24h"},
+                "triggered_criteria": ["test"], "competent_authority": "ILR",
+                "csirt": "CIRCL", "notification_recipient": "ILR",
+                "service_impact": "unavailable", "data_impact": "compromised",
+                "safety_impact": "none", "financial_impact": "significant",
+                "affected_persons_count": 10000, "impact_duration_hours": 4,
+            }],
+        )
+        event_dict = build_misp_event_global(self.assessment, self.entity)
+        result = push_event(MISP_URL, MISP_API_KEY, event_dict, ssl=False)
+        assert result["success"], f"Setup push failed: {result['error']}"
+        self.event_id = result["event_id"]
+
+    def test_add_early_warning_object(self):
+        from entity.misp_push import add_object_to_event
+
+        ew_object = {
+            "name": "cyberscale-early-warning",
+            "meta-category": "misc",
+            "template_uuid": "c5e0f001-e27a-4f00-a000-000000000003",
+            "template_version": "1",
+            "Attribute": [
+                {"object_relation": "submission-timestamp", "type": "datetime", "value": "2026-04-04T12:00:00+0000"},
+                {"object_relation": "deadline", "type": "text", "value": "24h"},
+                {"object_relation": "suspected-malicious", "type": "boolean", "value": "1"},
+                {"object_relation": "cross-border-impact", "type": "boolean", "value": "0"},
+                {"object_relation": "description", "type": "text", "value": "Test early warning"},
+                {"object_relation": "support-requested", "type": "boolean", "value": "0"},
+                {"object_relation": "notification-recipient", "type": "text", "value": "ILR"},
+            ],
+        }
+
+        result = add_object_to_event(MISP_URL, MISP_API_KEY, self.event_id, ew_object, ssl=False)
+        assert result["success"] is True, f"Add object failed: {result['error']}"
+        assert result["object_id"]
+
+    def test_add_and_update_lifecycle_tags(self):
+        from entity.misp_push import update_event_tags, get_event_tags
+
+        # Add received tag
+        result = update_event_tags(
+            MISP_URL, MISP_API_KEY, self.event_id,
+            add_tag='cyberscale:notification-status="received"', ssl=False,
+        )
+        assert result["success"] is True, f"Add tag failed: {result['error']}"
+
+        tags = get_event_tags(MISP_URL, MISP_API_KEY, self.event_id, ssl=False)
+        status_tags = [t for t in tags if "notification-status" in t]
+        assert 'cyberscale:notification-status="received"' in status_tags
+
+        # Update to acknowledged (remove old, add new)
+        result = update_event_tags(
+            MISP_URL, MISP_API_KEY, self.event_id,
+            remove_prefix="cyberscale:notification-status",
+            add_tag='cyberscale:notification-status="acknowledged"', ssl=False,
+        )
+        assert result["success"] is True, f"Update tag failed: {result['error']}"
+
+        tags = get_event_tags(MISP_URL, MISP_API_KEY, self.event_id, ssl=False)
+        status_tags = [t for t in tags if "notification-status" in t]
+        assert len(status_tags) == 1, f"Expected 1 status tag, got {status_tags}"
+        assert 'cyberscale:notification-status="acknowledged"' in status_tags
+
+    def test_full_lifecycle_round_trip(self):
+        """received → acknowledged → under-review → closed"""
+        from entity.misp_push import update_event_tags, get_event_tags
+
+        states = ["received", "acknowledged", "under-review", "closed"]
+
+        # Set initial
+        update_event_tags(MISP_URL, MISP_API_KEY, self.event_id,
+            add_tag=f'cyberscale:notification-status="{states[0]}"', ssl=False)
+
+        # Walk through each transition
+        for prev, next_state in zip(states, states[1:]):
+            result = update_event_tags(MISP_URL, MISP_API_KEY, self.event_id,
+                remove_prefix="cyberscale:notification-status",
+                add_tag=f'cyberscale:notification-status="{next_state}"', ssl=False)
+            assert result["success"], f"Transition {prev}→{next_state} failed: {result['error']}"
+
+            tags = get_event_tags(MISP_URL, MISP_API_KEY, self.event_id, ssl=False)
+            status_tags = [t for t in tags if "notification-status" in t]
+            assert f'cyberscale:notification-status="{next_state}"' in status_tags, \
+                f"Expected {next_state}, got {status_tags}"
+
+    def test_get_tags_returns_empty_for_nonexistent_event(self):
+        from entity.misp_push import get_event_tags
+
+        tags = get_event_tags(MISP_URL, MISP_API_KEY, "999999", ssl=False)
+        assert tags == []
