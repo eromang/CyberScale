@@ -55,6 +55,89 @@ def push_event(misp_url: str, misp_api_key: str, event_dict: dict, ssl: bool = T
         return {"success": False, "event_id": None, "event_uuid": None, "error": str(exc)}
 
 
+def add_object_to_event(
+    misp_url: str, misp_api_key: str, event_id: str,
+    object_dict: dict, ssl: bool = True,
+) -> dict:
+    """Add a MISP object to an existing event.
+
+    Returns dict with: success, object_id, error
+    """
+    try:
+        misp = PyMISP(misp_url, misp_api_key, ssl=ssl, timeout=30)
+    except Exception as exc:
+        logger.error("Failed to connect to MISP: %s", exc)
+        return {"success": False, "object_id": None, "error": str(exc)}
+
+    try:
+        response = misp.direct_call(f"objects/add/{event_id}", {"Object": object_dict})
+
+        if isinstance(response, dict) and "errors" in response:
+            error_msg = str(response["errors"])
+            logger.error("MISP add_object rejected: %s", error_msg)
+            return {"success": False, "object_id": None, "error": error_msg}
+
+        if isinstance(response, dict) and "Object" in response:
+            obj_id = str(response["Object"].get("id", ""))
+            logger.info("MISP object added: id=%s to event=%s", obj_id, event_id)
+            return {"success": True, "object_id": obj_id, "error": None}
+
+        return {"success": True, "object_id": "", "error": None}
+
+    except Exception as exc:
+        logger.error("MISP add_object failed: %s", exc)
+        return {"success": False, "object_id": None, "error": str(exc)}
+
+
+def update_event_tags(
+    misp_url: str, misp_api_key: str, event_id: str,
+    remove_prefix: str = "", add_tag: str = "", ssl: bool = True,
+) -> dict:
+    """Update tags on a MISP event. Removes tags matching prefix, adds new tag.
+
+    Returns dict with: success, error
+    """
+    try:
+        misp = PyMISP(misp_url, misp_api_key, ssl=ssl, timeout=30)
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+    try:
+        event = misp.direct_call(f"events/view/{event_id}")
+        if not isinstance(event, dict) or "Event" not in event:
+            return {"success": False, "error": "Event not found"}
+
+        existing_tags = event["Event"].get("Tag", [])
+
+        if remove_prefix:
+            for tag in existing_tags:
+                if tag["name"].startswith(remove_prefix):
+                    misp.direct_call(f"tags/removeTagFromEvent/{event_id}/{tag['id']}")
+
+        if add_tag:
+            misp.direct_call("events/addTag", {"event": event_id, "tag": add_tag})
+
+        return {"success": True, "error": None}
+
+    except Exception as exc:
+        logger.error("MISP tag update failed: %s", exc)
+        return {"success": False, "error": str(exc)}
+
+
+def get_event_tags(
+    misp_url: str, misp_api_key: str, event_id: str, ssl: bool = True,
+) -> list[str]:
+    """Get all tag names for a MISP event. Returns empty list on failure."""
+    try:
+        misp = PyMISP(misp_url, misp_api_key, ssl=ssl, timeout=30)
+        event = misp.direct_call(f"events/view/{event_id}")
+        if isinstance(event, dict) and "Event" in event:
+            return [t["name"] for t in event["Event"].get("Tag", [])]
+    except Exception:
+        pass
+    return []
+
+
 def _dict_to_misp_event(event_data: dict) -> MISPEvent:
     """Convert a CyberScale event dict into a MISPEvent object."""
     event = MISPEvent()
