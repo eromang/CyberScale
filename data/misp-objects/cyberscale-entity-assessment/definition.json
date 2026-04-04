@@ -2,7 +2,7 @@
   "name": "cyberscale-entity-assessment",
   "meta-category": "misc",
   "description": "CyberScale NIS2 incident severity assessment",
-  "version": 1,
+  "version": 2,
   "uuid": "c5e0f001-e27a-4f00-a000-000000000002",
   "attributes": {
     "sector": {"misp-attribute": "text", "ui-priority": 1, "description": "NIS2 sector"},
@@ -20,9 +20,11 @@
     "significant-incident": {"misp-attribute": "boolean", "ui-priority": 13, "description": "Whether incident is significant under NIS2"},
     "significance-model": {"misp-attribute": "text", "ui-priority": 14, "description": "ir_thresholds / national_lu / national_be / nis2_ml"},
     "competent-authority": {"misp-attribute": "text", "ui-priority": 15, "description": "Competent authority (ILR, CCB, CSSF, etc.)"},
-    "framework": {"misp-attribute": "text", "ui-priority": 16, "description": "Regulatory framework applied"},
-    "early-warning-recommended": {"misp-attribute": "boolean", "ui-priority": 17, "description": "Whether early warning should be sent"},
-    "early-warning-deadline": {"misp-attribute": "text", "ui-priority": 18, "description": "Deadline for early warning (24h NIS2, 4h DORA)"},
-    "triggered-criteria": {"misp-attribute": "text", "ui-priority": 19, "description": "Triggered threshold criteria (pipe-separated)"}
+    "csirt": {"misp-attribute": "text", "ui-priority": 16, "description": "Assigned CSIRT abbreviation"},
+    "notification-recipient": {"misp-attribute": "text", "ui-priority": 17, "description": "Who receives Art. 23 notifications"},
+    "framework": {"misp-attribute": "text", "ui-priority": 18, "description": "Regulatory framework applied"},
+    "early-warning-recommended": {"misp-attribute": "boolean", "ui-priority": 19, "description": "Whether early warning should be sent"},
+    "early-warning-deadline": {"misp-attribute": "text", "ui-priority": 20, "description": "Deadline for early warning (24h NIS2, 4h DORA)"},
+    "triggered-criteria": {"misp-attribute": "text", "ui-priority": 21, "description": "Triggered threshold criteria (pipe-separated)"}
   }
 }

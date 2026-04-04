@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import TestCase
 
-from entity.models import CompetentAuthority, CSIRT, Entity, EntityType
+from entity.models import Assessment, CompetentAuthority, CSIRT, Entity, EntityType
 from entity.authority import assign_authority
 
 
@@ -355,3 +355,35 @@ class AdminAuthorityTest(TestCase):
         resp = self.client.get("/admin/entity/entitytype/")
         assert resp.status_code == 200
         assert b"ILR" in resp.content
+
+
+class MISPExportAuthorityTest(TestCase):
+    def test_misp_export_includes_csirt(self):
+        from entity.misp_export import build_misp_event_global
+
+        user = User.objects.create_user("mispauth", password="testpass123")
+        entity = Entity.objects.create(
+            user=user, organisation_name="MISP Auth Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+        assessment = Assessment.objects.create(
+            entity=entity, status="completed",
+            description="Test", sector="energy", entity_type="electricity_undertaking",
+            result_significance_label="SIGNIFICANT",
+            assessment_results=[{
+                "sector": "energy", "entity_type": "electricity_undertaking",
+                "significance_label": "SIGNIFICANT", "model": "ir_thresholds",
+                "early_warning": {"recommended": False},
+                "triggered_criteria": [],
+                "competent_authority": "ILR",
+                "csirt": "CIRCL",
+                "notification_recipient": "ILR",
+            }],
+        )
+
+        event = build_misp_event_global(assessment, entity)
+        obj = event["Event"]["Object"][0]
+        attrs = {a["object_relation"]: a["value"] for a in obj["Attribute"]}
+        assert attrs.get("csirt") == "CIRCL"
+        assert attrs.get("notification-recipient") == "ILR"
