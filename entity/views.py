@@ -344,7 +344,7 @@ def early_warning_view(request, pk):
         from django.http import Http404
         raise Http404
 
-    if assessment.submissions.filter(target="early_warning").exists():
+    if assessment.submissions.filter(target="early_warning", status="success").exists():
         messages.info(request, "Early warning already submitted.")
         return redirect("assessment_result", pk=pk)
 
