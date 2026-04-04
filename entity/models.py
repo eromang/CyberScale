@@ -4,6 +4,49 @@ from django.conf import settings
 from django.db import models
 
 
+class CompetentAuthority(models.Model):
+    """NIS2 competent authority (e.g., ILR, CSSF, CCB)."""
+
+    name = models.CharField(max_length=255)
+    abbreviation = models.CharField(max_length=20)
+    ms = models.CharField(max_length=10)
+    sectors = models.JSONField(default=list)
+    website = models.URLField(blank=True)
+    notification_url = models.URLField(blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    receives_notifications = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("abbreviation", "ms")
+        verbose_name_plural = "competent authorities"
+
+    def __str__(self):
+        return f"{self.abbreviation} ({self.ms})"
+
+
+class CSIRT(models.Model):
+    """NIS2 CSIRT (e.g., CIRCL, GOVCERT.LU, CERT.be)."""
+
+    name = models.CharField(max_length=255)
+    abbreviation = models.CharField(max_length=20)
+    ms = models.CharField(max_length=10)
+    website = models.URLField(blank=True)
+    notification_url = models.URLField(blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    emergency_phone = models.CharField(max_length=50, blank=True)
+    receives_notifications = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("abbreviation", "ms")
+        verbose_name = "CSIRT"
+        verbose_name_plural = "CSIRTs"
+
+    def __str__(self):
+        return f"{self.abbreviation} ({self.ms})"
+
+
 class Entity(models.Model):
     """Entity profile — extends Django User."""
 
@@ -58,6 +101,16 @@ class EntityType(models.Model):
     sector = models.CharField(max_length=100)
     entity_type = models.CharField(max_length=100)
     added_at = models.DateTimeField(auto_now_add=True)
+    competent_authority = models.ForeignKey(
+        "CompetentAuthority", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="entity_types",
+    )
+    csirt = models.ForeignKey(
+        "CSIRT", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="entity_types",
+    )
+    ca_auto_assigned = models.BooleanField(default=True)
+    csirt_auto_assigned = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ("entity", "entity_type")
