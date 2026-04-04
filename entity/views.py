@@ -292,6 +292,7 @@ def assessment_result_view(request, pk):
 
     ew_submitted = assessment.submissions.filter(target="early_warning", status="success").exists()
     ew_recommended = assessment.result_early_warning.get("recommended", False)
+    ew_pushed_to_misp = assessment.submissions.filter(target="misp_push", status="success").exists()
 
     ew_status = ""
     ew_support_requested = False
@@ -313,6 +314,7 @@ def assessment_result_view(request, pk):
         "assessment": assessment,
         "ew_submitted": ew_submitted,
         "ew_recommended": ew_recommended,
+        "ew_pushed_to_misp": ew_pushed_to_misp,
         "ew_status": ew_status,
         "ew_support_requested": ew_support_requested,
     })

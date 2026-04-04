@@ -269,8 +269,18 @@ class EarlyWarningViewTest(TestCase):
         assert resp.status_code == 302  # redirects back to result
 
     def test_result_page_shows_submit_button(self):
+        # Assessment must be pushed to MISP first
+        Submission.objects.create(
+            assessment=self.assessment, target="misp_push", status="success",
+            misp_event_id="99",
+        )
         resp = self.client.get(f"/assess/{self.assessment.pk}/")
         assert b"Submit Early Warning" in resp.content
+
+    def test_result_page_shows_pending_when_not_pushed(self):
+        resp = self.client.get(f"/assess/{self.assessment.pk}/")
+        assert b"must be pushed to MISP" in resp.content
+        assert b"Submit Early Warning" not in resp.content
 
     def test_result_page_hides_button_when_submitted(self):
         Submission.objects.create(

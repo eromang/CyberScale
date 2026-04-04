@@ -30,7 +30,7 @@ services:
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
       MISP_URL: "https://misp"
-      MISP_API_KEY: "v4RaIPn5p7Fhxjmb26bNWFVrT0S9h05sfBJy9vqt"
+      MISP_API_KEY: "bZQyaa5SmvzyZ7zanXrtoxg6VQNSHK6vqnh7rfaE"
       MISP_SSL_VERIFY: "false"
     volumes:
       - .:/app

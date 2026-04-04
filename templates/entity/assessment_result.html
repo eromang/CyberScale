@@ -142,11 +142,17 @@
   {% endif %}
   <p><small>Submitted. Follow up with incident notification within 72 hours per Art. 23(4)(b).</small></p>
 </div>
-{% elif ew_recommended %}
+{% elif ew_recommended and ew_pushed_to_misp %}
 <div class="cs-card" style="border-left: 3px solid var(--cs-significant);">
   <h3>Early Warning Recommended</h3>
   <p>Deadline: {{ assessment.result_early_warning.deadline }} from awareness</p>
   <a href="{% url 'early_warning' assessment.pk %}" role="button" class="contrast">Submit Early Warning</a>
+</div>
+{% elif ew_recommended %}
+<div class="cs-card" style="border-left: 3px solid var(--cs-significant);">
+  <h3>Early Warning Recommended</h3>
+  <p>Deadline: {{ assessment.result_early_warning.deadline }} from awareness</p>
+  <p style="color: var(--cs-text-muted);">Assessment must be pushed to MISP by the administrator before early warning can be submitted.</p>
 </div>
 {% endif %}
 
