@@ -361,11 +361,11 @@ Each entity assessment produces one MISP event containing:
 | **v1.0** | Entity web form (multi-entity-type, per-type impacts) + PDF + MISP export + MISP push + save draft + Django admin + Docker playground |
 | **v1.1** | REST API (programmatic assessment access) |
 | **v1.2** | Authority & CSIRT registry — CompetentAuthority + CSIRT models, auto-assignment (sector+MS), data-driven CSIRT routing (sectors + CER), admin override, notification recipient in results + MISP export, LU: ILR/CSSF + CIRCL/GOVCERT.LU, BE: CCB/BNB + CERT.be |
-| **v1.3** | Art. 23 notification forms (early warning structured output for entity self-reporting) |
+| **v1.3** | Art. 23 early warning — entity submission form (pre-filled from assessment), CSIRT support request, auto-push to MISP-A as cyberscale-early-warning object on assessment event, basic admin lifecycle (received/acknowledged/under review/closed), MISP tags as source of truth |
 | **v1.4** | MISP-A ↔ MISP-B sync configuration — authority-side MISP receives entity profiles + assessments via MISP sync protocol |
 | **v1.5** | Additional national modules (as regulatory data becomes available) |
-| **v2.0** | Authority portal (CyberScale Authority) — CSIRT/CA-facing web interface connected to MISP-B, Phase 3a national classification (multi-entity aggregation, T×O matrix), cross-entity correlation, API for programmatic access |
-| **v2.1** | Temporal incident tracking — Art. 23(4) lifecycle (early warning 24h → notification 72h → intermediate → final report 1 month), same incident evolves over time, MISP event updates |
+| **v2.0** | Authority portal (CyberScale Authority) — dedicated CA/CSIRT UI, multi-tenant (each CA/CSIRT sees only their notifications), role-scoped access, lifecycle management via MISP-A (acknowledge, dispatch support, close), self-hostable with own MISP instance, Phase 3a classification, API |
+| **v2.1** | Temporal incident tracking — Art. 23(4) full lifecycle (early warning 24h → notification 72h → intermediate → final report 1 month), subsequent phases as objects on same MISP event, deadline tracking |
 | **v2.2** | CSIRT dashboard — active incidents, sector aggregation, cross-border impact view, overdue notification tracking |
 | **v2.3** | MISP-B → MISP-CNW federation — Phase 3a classifications shared to CSIRT Network (Art. 15), sharing groups, tag-based sync filtering (large_scale/cyber_crisis escalation) |
 | **v2.4** | MISP-CNW ↔ MISP-CyCLONe federation — Phase 3b EU classification on CyCLONe MISP, CyCLONe officer inputs, IPCR coordination levels, bidirectional situational awareness |
