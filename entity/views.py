@@ -460,9 +460,10 @@ def early_warning_view(request, pk):
         form = EarlyWarningForm(initial={
             "description": assessment.description,
             "suspected_malicious": assessment.suspected_malicious,
-            "cross_border_impact": bool(
-                assessment.ms_affected and
-                any(ms != entity.ms_established for ms in assessment.ms_affected)
+            "cross_border_impact": any(
+                ms != entity.ms_established
+                for r in (assessment.assessment_results or [])
+                for ms in r.get("ms_affected", [])
             ),
         })
 
