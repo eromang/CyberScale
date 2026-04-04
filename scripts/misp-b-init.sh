@@ -1,0 +1,93 @@
+#!/bin/bash
+# CyberScale MISP-B (authority side) initialization script.
+# Same setup as misp-init.sh but for the second MISP instance.
+#
+# Usage: docker compose exec misp-b /scripts/misp-b-init.sh
+
+set -e
+
+CAKE="/var/www/MISP/app/Console/cake"
+OBJECTS_DIR="/var/www/MISP/app/files/misp-objects/objects"
+CUSTOM_DIR="/misp-objects"
+
+echo "CyberScale MISP-B (authority) initialization"
+echo "=============================================="
+
+# Wait for MISP-B web to be ready
+echo "[1/6] Waiting for MISP-B to be ready..."
+for i in $(seq 1 60); do
+    if $CAKE admin getSetting MISP.baseurl >/dev/null 2>&1; then
+        echo "  MISP-B is ready."
+        break
+    fi
+    if [ $i -eq 60 ]; then
+        echo "  ERROR: MISP-B did not become ready within 120 seconds."
+        exit 1
+    fi
+    sleep 2
+done
+
+# Disable advanced auth keys
+echo "[2/6] Configuring authentication..."
+$CAKE admin setSetting Security.advanced_authkeys false >/dev/null 2>&1 || true
+
+# Generate API key
+echo "[3/6] Generating API key for admin@admin.test..."
+KEY_OUTPUT=$($CAKE user change_authkey admin@admin.test 2>&1)
+API_KEY=$(echo "$KEY_OUTPUT" | grep -oP 'key created: \K\S+' || echo "$KEY_OUTPUT" | grep -oP 'changed to: \K\S+')
+
+if [ -z "$API_KEY" ]; then
+    echo "  ERROR: Failed to generate API key."
+    echo "  Output: $KEY_OUTPUT"
+    exit 1
+fi
+echo "  API key: $API_KEY"
+
+# Copy custom object templates
+echo "[4/6] Installing CyberScale object templates..."
+if [ -d "$CUSTOM_DIR" ]; then
+    for template_dir in "$CUSTOM_DIR"/cyberscale-*/; do
+        template_name=$(basename "$template_dir")
+        if [ -f "$template_dir/definition.json" ]; then
+            mkdir -p "$OBJECTS_DIR/$template_name"
+            cp "$template_dir/definition.json" "$OBJECTS_DIR/$template_name/"
+            chown -R www-data:www-data "$OBJECTS_DIR/$template_name"
+            echo "  Installed: $template_name"
+        fi
+    done
+    UPDATED=$($CAKE admin updateObjectTemplates 1 2>&1)
+    echo "  $UPDATED"
+else
+    echo "  WARNING: $CUSTOM_DIR not found."
+fi
+
+# Create lifecycle tags
+echo "[5/6] Creating lifecycle tags..."
+TAGS=(
+    'cyberscale:notification-status="received"'
+    'cyberscale:notification-status="acknowledged"'
+    'cyberscale:notification-status="under-review"'
+    'cyberscale:notification-status="support-dispatched"'
+    'cyberscale:notification-status="closed"'
+    'nis2:notification-stage="early-warning"'
+    'cyberscale:support-requested="true"'
+)
+for TAG in "${TAGS[@]}"; do
+    curl -sk "https://localhost/tags/add" \
+        -H "Authorization: $API_KEY" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        -d "{\"Tag\":{\"name\":\"$TAG\",\"colour\":\"#0088cc\"}}" > /dev/null 2>&1
+done
+echo "  Created ${#TAGS[@]} lifecycle tags"
+
+# Output
+echo "[6/6] Done."
+echo ""
+echo "=============================================="
+echo "MISP-B API Key: $API_KEY"
+echo ""
+echo "Update cyberscale-web environment:"
+echo "  MISP_B_URL=https://misp-b"
+echo "  MISP_B_API_KEY=$API_KEY"
+echo "=============================================="
