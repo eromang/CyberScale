@@ -33,7 +33,7 @@ services:
       MISP_API_KEY: "bZQyaa5SmvzyZ7zanXrtoxg6VQNSHK6vqnh7rfaE"
       MISP_SSL_VERIFY: "false"
       MISP_B_URL: "https://misp-b"
-      MISP_B_API_KEY: "changeme-run-misp-b-init"
+      MISP_B_API_KEY: "gqD0a10tn9yzKJlwXX1cGOBHaTYG5wmhqZVhVfMh"
     volumes:
       - .:/app
       - model_cache:/app/data/models
