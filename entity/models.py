@@ -36,6 +36,8 @@ class CSIRT(models.Model):
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=50, blank=True)
     emergency_phone = models.CharField(max_length=50, blank=True)
+    sectors = models.JSONField(default=list, help_text='Sectors served (["*"] = all, ["public_administration"] = specific)')
+    cer_only = models.BooleanField(default=False, help_text="Also serves CER-designated entities regardless of sector")
     receives_notifications = models.BooleanField(default=False)
 
     class Meta:

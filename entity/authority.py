@@ -48,16 +48,30 @@ def _find_ca(ms: str, sector: str):
 
 
 def _find_csirt(ms: str, sector: str = "", cer_designated: bool = False):
-    """Find the appropriate CSIRT for a given MS.
+    """Find the most specific CSIRT for ms + sector + CER status.
 
-    For LU: GOVCERT.LU if entity is CER-designated or public administration.
-             CIRCL otherwise.
-    For other MS: first CSIRT found.
+    Priority: exact sector match > cer_only match (if CER-designated) > wildcard.
+    Same pattern as _find_ca but with CER-aware routing.
     """
     from .models import CSIRT
 
-    if ms == "LU" and (cer_designated or sector == "public_administration"):
-        govcert = CSIRT.objects.filter(ms="LU", abbreviation="GOVCERT.LU").first()
-        if govcert:
-            return govcert
-    return CSIRT.objects.filter(ms=ms).first()
+    candidates = list(CSIRT.objects.filter(ms=ms))
+
+    # 1. Exact sector match
+    exact = [c for c in candidates if sector in c.sectors]
+    if exact:
+        return exact[0]
+
+    # 2. CER-designated entity matches cer_only CSIRTs
+    if cer_designated:
+        cer = [c for c in candidates if c.cer_only]
+        if cer:
+            return cer[0]
+
+    # 3. Wildcard match
+    wildcard = [c for c in candidates if "*" in c.sectors]
+    if wildcard:
+        return wildcard[0]
+
+    # 4. Any CSIRT in that MS
+    return candidates[0] if candidates else None

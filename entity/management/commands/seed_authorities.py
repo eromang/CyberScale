@@ -46,6 +46,8 @@ class Command(BaseCommand):
                     "contact_email": csirt_data.get("contact_email", ""),
                     "contact_phone": csirt_data.get("contact_phone", ""),
                     "emergency_phone": csirt_data.get("emergency_phone", ""),
+                    "sectors": csirt_data.get("sectors", []),
+                    "cer_only": csirt_data.get("cer_only", False),
                     "receives_notifications": csirt_data.get("receives_notifications", False),
                 },
             )
