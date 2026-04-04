@@ -47,10 +47,10 @@ def push_event(misp_url: str, misp_api_key: str, event_dict: dict, ssl: bool = T
             event_id = str(response.id) if hasattr(response, "id") else ""
             event_uuid = str(response.uuid) if hasattr(response, "uuid") else ""
 
-        # Publish event so it's eligible for MISP sync
+        # Publish event immediately (bypass background workers) for MISP sync
         if event_id:
             try:
-                misp.publish(event_id)
+                misp._prepare_request("POST", f"events/publish/{event_id}/disable_background_processing:1")
                 logger.info("MISP event published: event_id=%s", event_id)
             except Exception as pub_exc:
                 logger.warning("MISP publish failed (event still created): %s", pub_exc)

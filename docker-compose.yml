@@ -29,10 +29,10 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production
       DEBUG: "true"
       ALLOWED_HOSTS: "*"
-      MISP_URL: "https://misp"
+      MISP_URL: "http://misp"
       MISP_API_KEY: "MY2hLF7DmGVU6oKg2bh1NDzGjTcZYzu6S1zDri4O"
       MISP_SSL_VERIFY: "false"
-      MISP_B_URL: "https://misp-b"
+      MISP_B_URL: "http://misp-b"
       MISP_B_API_KEY: "DeuxET40oeBEnvT4g7aK3AWUEBylhhGLMWVY6RWX"
     volumes:
       - .:/app
@@ -76,15 +76,17 @@ services:
       MYSQL_USER: misp
       MYSQL_PASSWORD: misp_dev
       REDIS_HOST: misp-redis
-      BASE_URL: "https://localhost"
+      BASE_URL: "http://localhost:8081"
       ADMIN_EMAIL: "admin@admin.test"
       ADMIN_PASSWORD: "admin"
       ADMIN_KEY: "MY2hLF7DmGVU6oKg2bh1NDzGjTcZYzu6S1zDri4O"
       NOREDIR: "true"
+      DISABLE_SSL_REDIRECT: "true"
     volumes:
       - ./data/misp-objects:/misp-objects:ro
       - ./scripts/misp-init.sh:/scripts/misp-init.sh:ro
     ports:
+      - "8081:80"
       - "8443:443"
     depends_on:
       misp-db:
@@ -125,15 +127,17 @@ services:
       MYSQL_USER: misp
       MYSQL_PASSWORD: misp_b_dev
       REDIS_HOST: misp-b-redis
-      BASE_URL: "https://localhost:8444"
+      BASE_URL: "http://localhost:8082"
       ADMIN_EMAIL: "admin@admin.test"
       ADMIN_PASSWORD: "admin"
       ADMIN_KEY: "DeuxET40oeBEnvT4g7aK3AWUEBylhhGLMWVY6RWX"
       NOREDIR: "true"
+      DISABLE_SSL_REDIRECT: "true"
     volumes:
       - ./data/misp-objects:/misp-objects:ro
       - ./scripts/misp-b-init.sh:/scripts/misp-b-init.sh:ro
     ports:
+      - "8082:80"
       - "8444:443"
     depends_on:
       misp-b-db:
