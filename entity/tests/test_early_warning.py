@@ -341,3 +341,69 @@ class AdminLifecycleTest(TestCase):
             })
         assert resp.status_code == 302
         mock_tags.assert_not_called()
+
+
+class EarlyWarningStatusTest(TestCase):
+    def setUp(self):
+        call_command("seed_authorities")
+        self.user = User.objects.create_user("ewstatus", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user, organisation_name="EW Status Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+            misp_instance_url="https://misp.example.org",
+            misp_api_key="test-key",
+        )
+        self.assessment = Assessment.objects.create(
+            entity=self.entity, status="completed",
+            description="Test", sector="energy",
+            entity_type="electricity_undertaking",
+            result_significance_label="SIGNIFICANT",
+            result_early_warning={"recommended": True, "deadline": "24h"},
+            assessment_results=[{
+                "sector": "energy", "entity_type": "electricity_undertaking",
+                "significance_label": "SIGNIFICANT", "model": "ir_thresholds",
+                "early_warning": {"recommended": True, "deadline": "24h"},
+                "triggered_criteria": [], "competent_authority": "ILR",
+                "csirt": "CIRCL", "notification_recipient": "ILR",
+            }],
+        )
+        Submission.objects.create(
+            assessment=self.assessment, target="early_warning", status="success",
+        )
+        Submission.objects.create(
+            assessment=self.assessment, target="misp_push", status="success",
+            misp_event_id="42",
+        )
+        self.client = Client()
+        self.client.login(username="ewstatus", password="testpass123")
+
+    def test_status_card_shows_acknowledged(self):
+        with patch("entity.misp_push.get_event_tags") as mock_tags:
+            mock_tags.return_value = [
+                'cyberscale:notification-status="acknowledged"',
+                'nis2:notification-stage="early-warning"',
+                "tlp:amber",
+            ]
+            resp = self.client.get(f"/assess/{self.assessment.pk}/")
+
+        assert resp.status_code == 200
+        assert b"ACKNOWLEDGED" in resp.content
+
+    def test_status_card_shows_support_requested(self):
+        with patch("entity.misp_push.get_event_tags") as mock_tags:
+            mock_tags.return_value = [
+                'cyberscale:notification-status="support-dispatched"',
+                'cyberscale:support-requested="true"',
+            ]
+            resp = self.client.get(f"/assess/{self.assessment.pk}/")
+
+        assert resp.status_code == 200
+        assert b"SUPPORT-DISPATCHED" in resp.content
+
+    def test_status_card_graceful_when_misp_unavailable(self):
+        with patch("entity.misp_push.get_event_tags") as mock_tags:
+            mock_tags.return_value = []
+            resp = self.client.get(f"/assess/{self.assessment.pk}/")
+
+        assert resp.status_code == 200

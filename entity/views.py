@@ -289,9 +289,142 @@ def assessment_result_view(request, pk):
     if entity is None:
         return redirect("register")
     assessment = get_object_or_404(Assessment, pk=pk, entity=entity)
+
+    ew_submitted = assessment.submissions.filter(target="early_warning", status="success").exists()
+    ew_recommended = assessment.result_early_warning.get("recommended", False)
+
+    ew_status = ""
+    ew_support_requested = False
+    if ew_submitted:
+        import os
+        from .misp_push import get_event_tags
+        push_sub = assessment.submissions.filter(target="misp_push", status="success").first()
+        if push_sub and push_sub.misp_event_id and entity.misp_instance_url:
+            ssl = os.environ.get("MISP_SSL_VERIFY", "").lower() not in ("0", "false", "no", "")
+            tags = get_event_tags(entity.misp_instance_url, entity.misp_api_key, push_sub.misp_event_id, ssl=ssl)
+            for tag in tags:
+                if tag.startswith("cyberscale:notification-status="):
+                    ew_status = tag.split("=", 1)[1].strip('"')
+                if tag == 'cyberscale:support-requested="true"':
+                    ew_support_requested = True
+
     return render(request, "entity/assessment_result.html", {
         "entity": entity,
         "assessment": assessment,
+        "ew_submitted": ew_submitted,
+        "ew_recommended": ew_recommended,
+        "ew_status": ew_status,
+        "ew_support_requested": ew_support_requested,
+    })
+
+
+@login_required
+def early_warning_view(request, pk):
+    entity = _get_entity_or_redirect(request)
+    if entity is None:
+        return redirect("register")
+
+    assessment = get_object_or_404(Assessment, pk=pk, entity=entity, status="completed")
+
+    if not assessment.result_early_warning.get("recommended"):
+        from django.http import Http404
+        raise Http404
+
+    if assessment.submissions.filter(target="early_warning").exists():
+        messages.info(request, "Early warning already submitted.")
+        return redirect("assessment_result", pk=pk)
+
+    from .forms import EarlyWarningForm
+
+    if request.method == "POST":
+        form = EarlyWarningForm(request.POST)
+        if form.is_valid():
+            from .misp_push import add_object_to_event, update_event_tags
+            import os
+
+            deadline = "4h" if "DORA" in (assessment.result_framework or "") else "24h"
+            now = timezone.now()
+
+            ew_object = {
+                "name": "cyberscale-early-warning",
+                "meta-category": "misc",
+                "template_uuid": "c5e0f001-e27a-4f00-a000-000000000003",
+                "template_version": "1",
+                "Attribute": [
+                    {"object_relation": "submission-timestamp", "type": "datetime", "value": now.strftime("%Y-%m-%dT%H:%M:%S+0000")},
+                    {"object_relation": "deadline", "type": "text", "value": deadline},
+                    {"object_relation": "suspected-malicious", "type": "boolean", "value": "1" if form.cleaned_data["suspected_malicious"] else "0"},
+                    {"object_relation": "cross-border-impact", "type": "boolean", "value": "1" if form.cleaned_data["cross_border_impact"] else "0"},
+                    {"object_relation": "initial-assessment", "type": "text", "value": form.cleaned_data["initial_assessment"]},
+                    {"object_relation": "support-requested", "type": "boolean", "value": "1" if form.cleaned_data["support_requested"] else "0"},
+                    {"object_relation": "notification-recipient", "type": "text", "value": assessment.result_competent_authority},
+                ],
+            }
+            if form.cleaned_data.get("support_description"):
+                ew_object["Attribute"].append(
+                    {"object_relation": "support-description", "type": "text", "value": form.cleaned_data["support_description"]},
+                )
+
+            misp_url = entity.misp_instance_url
+            misp_key = entity.misp_api_key
+            ssl = os.environ.get("MISP_SSL_VERIFY", "").lower() not in ("0", "false", "no", "")
+
+            push_sub = assessment.submissions.filter(target="misp_push", status="success").first()
+            event_id = push_sub.misp_event_id if push_sub else ""
+
+            if not event_id or not misp_url or not misp_key:
+                messages.error(request, "Assessment must be pushed to MISP before submitting early warning.")
+                return redirect("assessment_result", pk=pk)
+
+            result = add_object_to_event(misp_url, misp_key, event_id, ew_object, ssl=ssl)
+
+            if result["success"]:
+                tags_to_add = [
+                    'nis2:notification-stage="early-warning"',
+                    'cyberscale:notification-status="received"',
+                ]
+                if form.cleaned_data["support_requested"]:
+                    tags_to_add.append('cyberscale:support-requested="true"')
+
+                for tag in tags_to_add:
+                    update_event_tags(misp_url, misp_key, event_id, add_tag=tag, ssl=ssl)
+
+                Submission.objects.create(
+                    assessment=assessment, target="early_warning", status="success",
+                )
+                messages.success(request, f"Early warning submitted. Deadline: {deadline} from now.")
+            else:
+                Submission.objects.create(
+                    assessment=assessment, target="early_warning", status="failed",
+                )
+                messages.error(request, f"Early warning submission failed: {result['error']}")
+
+            return redirect("assessment_result", pk=pk)
+    else:
+        form = EarlyWarningForm(initial={
+            "suspected_malicious": assessment.suspected_malicious,
+            "cross_border_impact": bool(
+                assessment.ms_affected and
+                any(ms != entity.ms_established for ms in assessment.ms_affected)
+            ),
+        })
+
+    notification_recipient = ""
+    csirt = ""
+    if assessment.assessment_results:
+        r = assessment.assessment_results[0]
+        notification_recipient = r.get("notification_recipient", assessment.result_competent_authority)
+        csirt = r.get("csirt", "")
+
+    deadline = "4h" if "DORA" in (assessment.result_framework or "") else "24h"
+
+    return render(request, "entity/early_warning_form.html", {
+        "entity": entity,
+        "assessment": assessment,
+        "form": form,
+        "notification_recipient": notification_recipient,
+        "csirt": csirt,
+        "deadline": deadline,
     })
 
 

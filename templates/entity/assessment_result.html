@@ -128,6 +128,28 @@
   <p>{{ assessment.description }}</p>
 </div>
 
+{# Early warning status / submit button #}
+{% if ew_submitted %}
+<div class="cs-card">
+  <h3>Early Warning Status</h3>
+  {% if ew_status %}
+    <p><span class="badge badge-model">{{ ew_status|upper }}</span></p>
+  {% else %}
+    <p><span class="badge badge-undetermined">STATUS UNAVAILABLE</span></p>
+  {% endif %}
+  {% if ew_support_requested %}
+    <p><strong>CSIRT Support:</strong> Requested</p>
+  {% endif %}
+  <p><small>Submitted. Follow up with incident notification within 72 hours per Art. 23(4)(b).</small></p>
+</div>
+{% elif ew_recommended %}
+<div class="cs-card" style="border-left: 3px solid var(--cs-significant);">
+  <h3>Early Warning Recommended</h3>
+  <p>Deadline: {{ assessment.result_early_warning.deadline }} from awareness</p>
+  <a href="{% url 'early_warning' assessment.pk %}" role="button" class="contrast">Submit Early Warning</a>
+</div>
+{% endif %}
+
 {# Actions #}
 <div class="cs-actions">
   <a href="{% url 'assessment_pdf' assessment.pk %}" role="button">Download PDF</a>
