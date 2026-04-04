@@ -209,6 +209,59 @@ def push_to_misp(modeladmin, request, queryset):
 push_to_misp.short_description = "Push to MISP"
 
 
+def _update_ew_status(request, queryset, new_status):
+    """Shared logic for early warning lifecycle actions."""
+    from .misp_push import update_event_tags
+
+    for assessment in queryset.select_related("entity"):
+        entity = assessment.entity
+        if not assessment.submissions.filter(target="early_warning", status="success").exists():
+            messages.warning(request, f"Assessment #{assessment.pk}: No early warning submitted.")
+            continue
+
+        push_sub = assessment.submissions.filter(target="misp_push", status="success").first()
+        if not push_sub or not push_sub.misp_event_id:
+            messages.error(request, f"Assessment #{assessment.pk}: No MISP event ID.")
+            continue
+
+        result = update_event_tags(
+            entity.misp_instance_url, entity.misp_api_key,
+            push_sub.misp_event_id,
+            remove_prefix="cyberscale:notification-status",
+            add_tag=f'cyberscale:notification-status="{new_status}"',
+            ssl=MISP_SSL_VERIFY,
+        )
+
+        if result["success"]:
+            messages.success(request, f"Assessment #{assessment.pk}: Status → {new_status}")
+        else:
+            messages.error(request, f"Assessment #{assessment.pk}: Failed — {result['error']}")
+
+
+def acknowledge_early_warning(modeladmin, request, queryset):
+    _update_ew_status(request, queryset, "acknowledged")
+
+acknowledge_early_warning.short_description = "Acknowledge early warning"
+
+
+def mark_under_review(modeladmin, request, queryset):
+    _update_ew_status(request, queryset, "under-review")
+
+mark_under_review.short_description = "Mark early warning under review"
+
+
+def dispatch_support(modeladmin, request, queryset):
+    _update_ew_status(request, queryset, "support-dispatched")
+
+dispatch_support.short_description = "Dispatch CSIRT support"
+
+
+def close_early_warning(modeladmin, request, queryset):
+    _update_ew_status(request, queryset, "closed")
+
+close_early_warning.short_description = "Close early warning"
+
+
 @admin.register(Assessment)
 class AssessmentAdmin(admin.ModelAdmin):
     list_display = (
@@ -223,7 +276,7 @@ class AssessmentAdmin(admin.ModelAdmin):
         "result_criteria", "result_framework", "result_competent_authority",
         "result_early_warning", "result_raw", "misp_event_uuid",
     )
-    actions = [export_assessments_csv, push_to_misp]
+    actions = [export_assessments_csv, push_to_misp, acknowledge_early_warning, mark_under_review, dispatch_support, close_early_warning]
 
 
 @admin.register(Submission)
