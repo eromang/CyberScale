@@ -213,6 +213,7 @@ class Submission(models.Model):
         ("misp_json_download", "MISP JSON Download"),
         ("misp_push", "MISP Push"),
         ("misp_profile_push", "MISP Profile Push"),
+        ("early_warning", "Early Warning"),
     ]
     STATUS_CHOICES = [
         ("pending", "Pending"),

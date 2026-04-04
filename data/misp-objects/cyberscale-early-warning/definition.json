@@ -1,0 +1,17 @@
+{
+  "name": "cyberscale-early-warning",
+  "meta-category": "misc",
+  "description": "CyberScale NIS2 Art. 23(4)(a) early warning notification",
+  "version": 1,
+  "uuid": "c5e0f001-e27a-4f00-a000-000000000003",
+  "attributes": {
+    "submission-timestamp": {"misp-attribute": "datetime", "ui-priority": 1, "description": "When the early warning was submitted"},
+    "deadline": {"misp-attribute": "text", "ui-priority": 2, "description": "Notification deadline (24h NIS2, 4h DORA)"},
+    "suspected-malicious": {"misp-attribute": "boolean", "ui-priority": 3, "description": "Entity-confirmed: suspected malicious"},
+    "cross-border-impact": {"misp-attribute": "boolean", "ui-priority": 4, "description": "Entity-confirmed: cross-border impact"},
+    "initial-assessment": {"misp-attribute": "text", "ui-priority": 5, "description": "Entity free-text initial assessment"},
+    "support-requested": {"misp-attribute": "boolean", "ui-priority": 6, "description": "Entity requests CSIRT assistance"},
+    "support-description": {"misp-attribute": "text", "ui-priority": 7, "description": "Nature of support needed"},
+    "notification-recipient": {"misp-attribute": "text", "ui-priority": 8, "description": "CA or CSIRT abbreviation"}
+  }
+}
