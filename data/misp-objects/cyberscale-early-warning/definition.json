@@ -9,7 +9,7 @@
     "deadline": {"misp-attribute": "text", "ui-priority": 2, "description": "Notification deadline (24h NIS2, 4h DORA)"},
     "suspected-malicious": {"misp-attribute": "boolean", "ui-priority": 3, "description": "Entity-confirmed: suspected malicious"},
     "cross-border-impact": {"misp-attribute": "boolean", "ui-priority": 4, "description": "Entity-confirmed: cross-border impact"},
-    "initial-assessment": {"misp-attribute": "text", "ui-priority": 5, "description": "Entity free-text initial assessment"},
+    "description": {"misp-attribute": "text", "ui-priority": 5, "description": "Incident description (editable recap from assessment)"},
     "support-requested": {"misp-attribute": "boolean", "ui-priority": 6, "description": "Entity requests CSIRT assistance"},
     "support-description": {"misp-attribute": "text", "ui-priority": 7, "description": "Nature of support needed"},
     "notification-recipient": {"misp-attribute": "text", "ui-priority": 8, "description": "CA or CSIRT abbreviation"}

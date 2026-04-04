@@ -124,7 +124,7 @@ class EarlyWarningFormTest(TestCase):
         form = EarlyWarningForm()
         assert "suspected_malicious" in form.fields
         assert "cross_border_impact" in form.fields
-        assert "initial_assessment" in form.fields
+        assert "description" in form.fields
         assert "support_requested" in form.fields
         assert "support_description" in form.fields
 
@@ -133,17 +133,17 @@ class EarlyWarningFormTest(TestCase):
         form = EarlyWarningForm(data={
             "suspected_malicious": True,
             "cross_border_impact": False,
-            "initial_assessment": "",
+            "description": "",
         })
         assert not form.is_valid()
-        assert "initial_assessment" in form.errors
+        assert "description" in form.errors
 
     def test_form_valid_without_support(self):
         from entity.forms import EarlyWarningForm
         form = EarlyWarningForm(data={
             "suspected_malicious": True,
             "cross_border_impact": False,
-            "initial_assessment": "SCADA compromise detected.",
+            "description": "SCADA compromise detected.",
             "support_requested": False,
         })
         assert form.is_valid(), form.errors
@@ -153,7 +153,7 @@ class EarlyWarningFormTest(TestCase):
         form = EarlyWarningForm(data={
             "suspected_malicious": True,
             "cross_border_impact": False,
-            "initial_assessment": "Incident detected.",
+            "description": "Incident detected.",
             "support_requested": True,
             "support_description": "",
         })
@@ -165,7 +165,7 @@ class EarlyWarningFormTest(TestCase):
         form = EarlyWarningForm(data={
             "suspected_malicious": True,
             "cross_border_impact": True,
-            "initial_assessment": "Incident detected.",
+            "description": "Incident detected.",
             "support_requested": True,
             "support_description": "Need forensic analysis support.",
         })
@@ -212,7 +212,7 @@ class EarlyWarningViewTest(TestCase):
         resp = self.client.get(f"/assess/{self.assessment.pk}/early-warning/")
         assert resp.status_code == 200
         assert b"Early Warning" in resp.content
-        assert b"Initial assessment" in resp.content
+        assert b"Incident description" in resp.content
 
     def test_form_requires_login(self):
         c = Client()
@@ -247,8 +247,8 @@ class EarlyWarningViewTest(TestCase):
             }
 
             resp = self.client.post(f"/assess/{self.assessment.pk}/early-warning/", {
+                "description": "SCADA compromise detected at substation.",
                 "suspected_malicious": "on",
-                "initial_assessment": "SCADA compromise detected at substation.",
             })
 
         assert resp.status_code == 302

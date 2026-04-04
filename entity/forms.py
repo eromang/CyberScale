@@ -239,14 +239,14 @@ class EntityProfileForm(forms.ModelForm):
 
 
 class EarlyWarningForm(forms.Form):
-    """Art. 23(4)(a) early warning submission form."""
+    """Art. 23(4)(a) early warning — editable recap of assessment data + CSIRT support."""
 
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 6}),
+        label="Incident description",
+    )
     suspected_malicious = forms.BooleanField(required=False, label="Suspected malicious activity")
     cross_border_impact = forms.BooleanField(required=False, label="Cross-border impact")
-    initial_assessment = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 6, "placeholder": "Describe the incident: what happened, what systems are affected, current status..."}),
-        label="Initial assessment",
-    )
     support_requested = forms.BooleanField(required=False, label="Request CSIRT support")
     support_description = forms.CharField(
         widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Describe the support needed (e.g., forensic analysis, containment assistance)..."}),

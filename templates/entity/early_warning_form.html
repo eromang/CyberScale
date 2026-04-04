@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Early Warning — Assessment #{{ assessment.pk }} — CyberScale{% endblock %}
+
+{% block content %}
+<div class="cs-page-header">
+  <h2>Submit Early Warning</h2>
+  <p>Assessment #{{ assessment.pk }} — {{ entity.organisation_name }}</p>
+</div>
+
+<div class="cs-card">
+  <h3>Notification Details</h3>
+  <p><strong>Significance:</strong> <span class="badge badge-significant">{{ assessment.result_significance_label }}</span></p>
+  <p><strong>Framework:</strong> {{ assessment.result_framework }}</p>
+  <p><strong>Recipient:</strong> {{ notification_recipient }}{% if csirt %} (CSIRT: {{ csirt }}){% endif %}</p>
+  <p><strong>Deadline:</strong> {{ deadline }} from submission</p>
+  <table>
+    <tbody>
+      <tr><td><strong>Service</strong></td><td>{{ assessment.service_impact }}</td></tr>
+      <tr><td><strong>Data</strong></td><td>{{ assessment.data_impact }}</td></tr>
+      <tr><td><strong>Safety</strong></td><td>{{ assessment.safety_impact }}</td></tr>
+      <tr><td><strong>Financial</strong></td><td>{{ assessment.financial_impact }}</td></tr>
+      <tr><td><strong>Affected persons</strong></td><td>{{ assessment.affected_persons_count }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  {% if form.errors %}
+    <div class="cs-card" style="border-left: 3px solid var(--cs-significant);">
+      <p><strong>Please correct the errors below:</strong></p>
+      {{ form.errors }}
+    </div>
+  {% endif %}
+
+  <fieldset>
+    <legend>Review and confirm</legend>
+
+    <label>Incident description (editable)
+      {{ form.description }}
+    </label>
+
+    <label>
+      {{ form.suspected_malicious }} Incident is suspected to be caused by unlawful or malicious acts
+    </label>
+
+    <label>
+      {{ form.cross_border_impact }} Incident has or could have cross-border impact
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>CSIRT Support</legend>
+
+    <label>
+      {{ form.support_requested }} Request assistance from CSIRT
+    </label>
+
+    <label>Support description (required if requesting support)
+      {{ form.support_description }}
+    </label>
+  </fieldset>
+
+  <div class="cs-actions">
+    <button type="submit" class="contrast">Submit Early Warning</button>
+    <a href="{% url 'assessment_result' assessment.pk %}" role="button" class="outline">Cancel</a>
+  </div>
+</form>
+
+<br>
+<small style="color: var(--cs-text-muted);">
+  By submitting, this early warning will be sent to {{ notification_recipient }} per NIS2 Art. 23(4)(a).
+  You must follow up with an incident notification within 72 hours per Art. 23(4)(b).
+</small>
+{% endblock %}

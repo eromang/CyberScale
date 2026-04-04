@@ -393,7 +393,7 @@ def early_warning_view(request, pk):
                     {"object_relation": "deadline", "type": "text", "value": deadline},
                     {"object_relation": "suspected-malicious", "type": "boolean", "value": "1" if form.cleaned_data["suspected_malicious"] else "0"},
                     {"object_relation": "cross-border-impact", "type": "boolean", "value": "1" if form.cleaned_data["cross_border_impact"] else "0"},
-                    {"object_relation": "initial-assessment", "type": "text", "value": form.cleaned_data["initial_assessment"]},
+                    {"object_relation": "description", "type": "text", "value": form.cleaned_data["description"]},
                     {"object_relation": "support-requested", "type": "boolean", "value": "1" if form.cleaned_data["support_requested"] else "0"},
                     {"object_relation": "notification-recipient", "type": "text", "value": assessment.result_competent_authority},
                 ],
@@ -433,6 +433,7 @@ def early_warning_view(request, pk):
             return redirect("assessment_result", pk=pk)
     else:
         form = EarlyWarningForm(initial={
+            "description": assessment.description,
             "suspected_malicious": assessment.suspected_malicious,
             "cross_border_impact": bool(
                 assessment.ms_affected and
