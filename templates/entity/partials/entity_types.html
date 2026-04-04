@@ -2,6 +2,12 @@
   {% for et in entity_types %}
   <li style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0;">
     <span>{{ et.sector_label }} / {{ et.label }}</span>
+    {% if et.competent_authority %}
+      <small style="color: var(--cs-text-muted);">CA: {{ et.competent_authority.abbreviation }}</small>
+    {% endif %}
+    {% if et.csirt %}
+      <small style="color: var(--cs-text-muted);">CSIRT: {{ et.csirt.abbreviation }}</small>
+    {% endif %}
     {% if entity_types|length > 1 %}
     <form method="post" action="{% url 'remove_entity_type' et.pk %}" style="display:inline;"
           hx-post="{% url 'remove_entity_type' et.pk %}"

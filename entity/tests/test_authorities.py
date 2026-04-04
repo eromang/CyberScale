@@ -387,3 +387,46 @@ class MISPExportAuthorityTest(TestCase):
         attrs = {a["object_relation"]: a["value"] for a in obj["Attribute"]}
         assert attrs.get("csirt") == "CIRCL"
         assert attrs.get("notification-recipient") == "ILR"
+
+
+class UIAuthorityTest(TestCase):
+    def setUp(self):
+        call_command("seed_authorities")
+        self.user = User.objects.create_user("uitest", password="testpass123")
+        self.entity = Entity.objects.create(
+            user=self.user, organisation_name="UI Auth Corp",
+            sector="energy", entity_type="electricity_undertaking",
+            ms_established="LU",
+        )
+        self.et = EntityType.objects.create(
+            entity=self.entity, sector="energy", entity_type="electricity_undertaking",
+        )
+        assign_authority(self.et)
+        self.client = TestClient()
+        self.client.login(username="uitest", password="testpass123")
+
+    def test_dashboard_shows_authority(self):
+        resp = self.client.get("/")
+        assert resp.status_code == 200
+        assert b"ILR" in resp.content
+        assert b"CIRCL" in resp.content
+
+    def test_result_page_shows_notification_recipient(self):
+        assessment = Assessment.objects.create(
+            entity=self.entity, status="completed",
+            description="Test", sector="energy", entity_type="electricity_undertaking",
+            result_significance_label="SIGNIFICANT",
+            result_competent_authority="ILR",
+            assessment_results=[{
+                "sector": "energy", "entity_type": "electricity_undertaking",
+                "significance_label": "SIGNIFICANT", "model": "ir_thresholds",
+                "early_warning": {"recommended": True, "deadline": "24h"},
+                "triggered_criteria": [],
+                "competent_authority": "ILR",
+                "csirt": "CIRCL",
+                "notification_recipient": "ILR",
+            }],
+        )
+        resp = self.client.get(f"/assess/{assessment.pk}/")
+        assert resp.status_code == 200
+        assert b"ILR" in resp.content

@@ -39,6 +39,8 @@
       </p>
       {% if r.framework %}<p><strong>Framework:</strong> {{ r.framework }}</p>{% endif %}
       {% if r.competent_authority %}<p><strong>Authority:</strong> {{ r.competent_authority }}</p>{% endif %}
+      {% if r.csirt %}<p><strong>CSIRT:</strong> {{ r.csirt }}</p>{% endif %}
+      {% if r.notification_recipient %}<p><strong>Notify:</strong> {{ r.notification_recipient }}</p>{% endif %}
     </div>
     <div>
       {% if r.triggered_criteria %}
